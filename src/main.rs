@@ -1,7 +1,10 @@
 mod common;
 mod config;
+mod dna;
 mod external;
-mod submissions;
+mod isolates;
+mod samples;
+mod sites;
 
 use axum::{routing::get, Router};
 use axum_keycloak_auth::{instance::KeycloakAuthInstance, instance::KeycloakConfig, Url};
@@ -48,8 +51,20 @@ async fn main() {
         .route("/api/config", get(common::views::get_ui_config))
         .with_state(db.clone())
         .nest(
-            "/api/submissions",
-            submissions::views::router(db.clone(), keycloak_auth_instance.clone()),
+            "/api/sites",
+            sites::views::router(db.clone(), keycloak_auth_instance.clone()),
+        )
+        .nest(
+            "/api/samples",
+            samples::views::router(db.clone(), keycloak_auth_instance.clone()),
+        )
+        .nest(
+            "/api/isolates",
+            isolates::views::router(db.clone(), keycloak_auth_instance.clone()),
+        )
+        .nest(
+            "/api/dna",
+            dna::views::router(db.clone(), keycloak_auth_instance.clone()),
         );
 
     let addr: std::net::SocketAddr = "0.0.0.0:3000".parse().unwrap();

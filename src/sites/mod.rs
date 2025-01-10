@@ -1,4 +1,4 @@
 pub mod db;
 pub mod models;
-pub mod run_status;
+pub mod replicates;
 pub mod views;

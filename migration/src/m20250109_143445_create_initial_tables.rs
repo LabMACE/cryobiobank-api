@@ -30,8 +30,9 @@ impl MigrationTrait for Migration {
               UNIQUE (name)
             );
 
-            CREATE TABLE IF NOT EXISTS site_samples (
+            CREATE TABLE IF NOT EXISTS site_replicates (
               id                                 UUID NOT NULL,
+              site_id                            UUID NOT NULL,
               name                               TEXT NULL,
               sample_type                        TEXT NOT NULL,
               sampling_date                      DATE NOT NULL,
@@ -68,7 +69,11 @@ impl MigrationTrait for Migration {
               sequencing_metagenomics            TEXT NULL,
               relevant_publications              TEXT NULL,
               PRIMARY KEY (id),
-              UNIQUE (name)
+              UNIQUE (name),
+              CONSTRAINT fk_replicate_site_id
+                FOREIGN KEY (site_id) REFERENCES sites(id)
+                ON DELETE SET NULL
+                ON UPDATE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS isolates (
@@ -76,15 +81,15 @@ impl MigrationTrait for Migration {
               name                     TEXT NOT NULL,
               taxonomy                 TEXT,
               photo                    BYTEA,
-              site_id                  UUID,
+              site_replicate_id        UUID NOT NULL,
               temperature_of_isolation DOUBLE PRECISION,
               media_used_for_isolation TEXT,
               storage_location         TEXT,
               dna_id                   UUID,
               PRIMARY KEY (id),
               UNIQUE (name),
-              CONSTRAINT fk_isolate_site_id
-                FOREIGN KEY (site_id) REFERENCES sites(id)
+              CONSTRAINT fk_isolate_site_replicate_id
+                FOREIGN KEY (site_replicate_id) REFERENCES site_replicates(id)
                 ON DELETE SET NULL
                 ON UPDATE CASCADE,
               CONSTRAINT fk_isolate_dna_id
@@ -94,17 +99,17 @@ impl MigrationTrait for Migration {
             );
 
             CREATE TABLE IF NOT EXISTS samples (
-              id               UUID NOT NULL,
-              name             TEXT NOT NULL,
-              site_id          UUID,
-              type_of_sample   TEXT,
-              storage_location TEXT,
-              description      TEXT,
-              dna_id           UUID,
+              id                  UUID NOT NULL,
+              name                TEXT NOT NULL,
+              site_replicate_id   UUID,
+              type_of_sample      TEXT,
+              storage_location    TEXT,
+              description         TEXT,
+              dna_id              UUID,
               PRIMARY KEY (id),
               UNIQUE (name),
-              CONSTRAINT fk_sample_site_id
-                FOREIGN KEY (site_id) REFERENCES sites(id)
+              CONSTRAINT fk_sample_site_replicate_id
+                FOREIGN KEY (site_replicate_id) REFERENCES site_replicates(id)
                 ON DELETE SET NULL
                 ON UPDATE CASCADE,
               CONSTRAINT fk_sample_dna_id
@@ -125,7 +130,7 @@ impl MigrationTrait for Migration {
         let drop_all = r#"
             DROP TABLE IF EXISTS samples;
             DROP TABLE IF EXISTS isolates;
-            DROP TABLE IF EXISTS site_samples;
+            DROP TABLE IF EXISTS site_replicates;
             DROP TABLE IF EXISTS sites;
             DROP TABLE IF EXISTS dna;
         "#;
