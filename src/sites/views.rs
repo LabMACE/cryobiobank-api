@@ -4,7 +4,8 @@ use crate::common::models::FilterOptions;
 use crate::common::pagination::calculate_content_range;
 use crate::common::sort::generic_sort;
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
+    http::StatusCode,
     response::IntoResponse,
     routing, Json, Router,
 };
@@ -13,12 +14,17 @@ use axum_keycloak_auth::{
 };
 use sea_orm::{query::*, DatabaseConnection, EntityTrait};
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub fn router(db: DatabaseConnection, keycloak_auth_instance: Arc<KeycloakAuthInstance>) -> Router {
     Router::new()
         .route(
             "/",
             routing::get(get_all), // .post(create_one)
+        )
+        .route(
+            "/:id",
+            routing::get(get_one), // .put(update_one).delete(delete_one)
         )
         // .route(
         //     "/:id",
@@ -81,4 +87,23 @@ pub async fn get_all(
     let headers = calculate_content_range(offset, limit, total_count, RESOURCE_NAME);
 
     (headers, Json(response_objs))
+}
+
+#[utoipa::path(
+    get,
+    path = format!("/api/{}/{{id}}", RESOURCE_NAME),
+    responses((status = OK, body = super::models::Submission))
+)]
+pub async fn get_one(
+    State(db): State<DatabaseConnection>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<super::models::Site>, (StatusCode, Json<String>)> {
+    let obj = match super::db::Entity::find_by_id(id).one(&db).await {
+        Ok(obj) => obj.unwrap(),
+        _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
+    };
+
+    let submission: super::models::Site = obj.clone().into();
+
+    Ok(Json(submission))
 }
