@@ -60,19 +60,3 @@ impl From<DNAUpdate> for ActiveModel {
         }
     }
 }
-
-impl DNAUpdate {
-    pub fn merge_into_activemodel(&self, mut model: ActiveModel) -> ActiveModel {
-        if let Some(name) = &self.name {
-            model.name = Set(name.clone());
-        }
-        if let Some(description) = &self.description {
-            model.description = Set(Some(description.clone()));
-        }
-        if let Some(extraction_method) = &self.extraction_method {
-            model.extraction_method = Set(Some(extraction_method.clone()));
-        }
-
-        model
-    }
-}

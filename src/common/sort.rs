@@ -1,4 +1,4 @@
-use sea_query::Order;
+use sea_orm::sea_query::Order;
 
 pub fn generic_sort<C>(
     sort: Option<String>,

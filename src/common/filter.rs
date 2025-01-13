@@ -1,6 +1,7 @@
-use sea_orm::Condition;
-use sea_query::extension::postgres::PgExpr;
-use sea_query::{Alias, Expr};
+use sea_orm::{
+    sea_query::{extension::postgres::PgExpr, Alias, Expr},
+    Condition,
+};
 use std::collections::HashMap;
 use uuid::Uuid;
 
