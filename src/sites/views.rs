@@ -99,7 +99,8 @@ pub async fn get_one(
     Path(id): Path<Uuid>,
 ) -> Result<Json<super::models::Site>, (StatusCode, Json<String>)> {
     let obj = match super::db::Entity::find_by_id(id).one(&db).await {
-        Ok(obj) => obj.unwrap(),
+        Ok(Some(obj)) => obj,
+        Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
         _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
     };
 

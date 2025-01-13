@@ -16,7 +16,7 @@ pub struct Model {
     #[sea_orm(column_name = "sample_type")]
     pub sample_type: String,
     pub sampling_date: NaiveDate,
-    pub sample_depth_cm: Option<i32>,
+    pub sample_depth_cm: Option<f64>,
     pub snow_depth_cm: Option<i32>,
     pub air_temperature_celsius: Option<f64>,
     pub snow_temperature_celsius: Option<f64>,
