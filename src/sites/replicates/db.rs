@@ -1,10 +1,10 @@
-use chrono::NaiveDateTime;
+use chrono::NaiveDate;
 use sea_orm::entity::prelude::*;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, ToSchema)]
-#[sea_orm(table_name = "site_samples")]
+#[sea_orm(table_name = "site_replicates")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: Uuid,
@@ -15,9 +15,9 @@ pub struct Model {
 
     #[sea_orm(column_name = "sample_type")]
     pub sample_type: String,
-    pub sampling_date: NaiveDateTime,
+    pub sampling_date: NaiveDate,
     pub sample_depth_cm: Option<i32>,
-    pub snow_depth: Option<i32>,
+    pub snow_depth_cm: Option<i32>,
     pub air_temperature_celsius: Option<f64>,
     pub snow_temperature_celsius: Option<f64>,
     pub photosynthetic_active_radiation: Option<i32>,
@@ -58,7 +58,6 @@ pub enum Relation {
     Site,
 }
 
-// `Related` trait has to be implemented by hand
 impl Related<crate::sites::db::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Site.def()

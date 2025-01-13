@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::NaiveDate;
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -6,13 +6,13 @@ use uuid::Uuid;
 use super::db::Model;
 
 #[derive(ToSchema, Serialize, Debug)]
-pub struct SiteSample {
+pub struct SiteReplicate {
     pub id: Uuid,
     pub name: String,
     pub sample_type: String,
-    pub sampling_date: NaiveDateTime,
+    pub sampling_date: NaiveDate,
     pub sample_depth_cm: Option<i32>,
-    pub snow_depth: Option<i32>,
+    pub snow_depth_cm: Option<i32>,
     pub air_temperature_celsius: Option<f64>,
     pub snow_temperature_celsius: Option<f64>,
     pub photosynthetic_active_radiation: Option<i32>,
@@ -42,7 +42,7 @@ pub struct SiteSample {
     pub organic_acids_acetate: Option<f64>,
 }
 
-impl From<Model> for SiteSample {
+impl From<Model> for SiteReplicate {
     fn from(model: Model) -> Self {
         Self {
             id: model.id,
@@ -50,7 +50,7 @@ impl From<Model> for SiteSample {
             sample_type: model.sample_type,
             sampling_date: model.sampling_date,
             sample_depth_cm: model.sample_depth_cm,
-            snow_depth: model.snow_depth,
+            snow_depth_cm: model.snow_depth_cm,
             air_temperature_celsius: model.air_temperature_celsius,
             snow_temperature_celsius: model.snow_temperature_celsius,
             photosynthetic_active_radiation: model.photosynthetic_active_radiation,

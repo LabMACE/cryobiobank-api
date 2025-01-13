@@ -12,7 +12,7 @@ use axum::{
 use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
-use sea_orm::{query::*, DatabaseConnection, EntityTrait};
+use sea_orm::{query::*, DatabaseConnection, EntityTrait, LoaderTrait, ModelTrait};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -56,7 +56,8 @@ pub async fn get_all(
         super::db::Column::Id,
     );
 
-    let objs: Vec<super::db::Model> = super::db::Entity::find()
+    let objs = super::db::Entity::find()
+        // .find_with_related(crate::sites::replicates::db::Entity)
         .filter(condition.clone())
         .order_by(order_column, order_direction)
         .offset(offset)
@@ -65,8 +66,17 @@ pub async fn get_all(
         .await
         .unwrap();
 
+    let related = objs
+        .load_many(crate::sites::replicates::db::Entity, &db)
+        .await
+        .unwrap();
+
     // Map the results from the database models
-    let response_objs: Vec<super::models::Site> = objs.into_iter().map(|obj| obj.into()).collect();
+    let response_objs: Vec<super::models::Site> = objs
+        .into_iter()
+        .zip(related)
+        .map(|(obj, related)| (obj, related).into())
+        .collect();
 
     let total_count: u64 = <super::db::Entity>::find()
         .filter(condition.clone())
@@ -93,7 +103,13 @@ pub async fn get_one(
         _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
     };
 
-    let submission: super::models::Site = obj.clone().into();
+    let related = obj
+        .find_related(crate::sites::replicates::db::Entity)
+        .all(&db)
+        .await
+        .unwrap();
 
-    Ok(Json(submission))
+    let obj: super::models::Site = (obj, related).into();
+
+    Ok(Json(obj))
 }

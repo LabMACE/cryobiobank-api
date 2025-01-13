@@ -9,6 +9,7 @@ use super::db::{ActiveModel, Model};
 pub struct Site {
     pub id: Uuid,
     pub name: String,
+    pub replicates: Vec<super::replicates::models::SiteReplicate>,
     // pub geometry: String,
 }
 
@@ -17,6 +18,18 @@ impl From<Model> for Site {
         Self {
             id: model.id,
             name: model.name,
+            replicates: Vec::new(),
+            // geometry: model.geometry,
+        }
+    }
+}
+
+impl From<(Model, Vec<super::replicates::db::Model>)> for Site {
+    fn from((model, replicates): (Model, Vec<super::replicates::db::Model>)) -> Self {
+        Self {
+            id: model.id,
+            name: model.name,
+            replicates: replicates.into_iter().map(|r| r.into()).collect(),
             // geometry: model.geometry,
         }
     }
