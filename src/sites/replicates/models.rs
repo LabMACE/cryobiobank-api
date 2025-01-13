@@ -12,7 +12,7 @@ pub struct SiteReplicate {
     pub sample_type: String,
     pub sampling_date: NaiveDate,
     pub sample_depth_cm: Option<f64>,
-    pub snow_depth_cm: Option<i32>,
+    pub snow_depth_cm: Option<f64>,
     pub air_temperature_celsius: Option<f64>,
     pub snow_temperature_celsius: Option<f64>,
     pub photosynthetic_active_radiation: Option<i32>,
