@@ -14,7 +14,6 @@ pub struct Model {
 
     pub taxonomy: Option<String>,
     pub photo: Option<String>,
-    pub origin: Option<String>,
     pub temperature_of_isolation: Option<f64>,
     pub media_used_for_isolation: Option<String>,
     pub storage_location: Option<String>,
