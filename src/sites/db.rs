@@ -10,6 +10,9 @@ pub struct Model {
 
     #[sea_orm(unique)]
     pub name: String,
+    pub x: Option<f64>,
+    pub y: Option<f64>,
+    pub z: Option<f64>,
     // pub geometry: String,
 }
 

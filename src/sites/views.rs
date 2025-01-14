@@ -12,7 +12,10 @@ use axum::{
 use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
-use sea_orm::{query::*, DatabaseConnection, EntityTrait, LoaderTrait, ModelTrait};
+use sea_orm::{
+    query::*, sea_query::Expr, DatabaseConnection, EntityTrait, LoaderTrait, ModelTrait,
+    SelectorTrait,
+};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -62,9 +65,22 @@ pub async fn get_all(
         .order_by(order_column, order_direction)
         .offset(offset)
         .limit(limit)
+        .select_only()
+        .column(super::db::Column::Id)
+        .column(super::db::Column::Name)
+        .column_as(Expr::cust("ST_X(geometry)"), "x")
+        .column_as(Expr::cust("ST_Y(geometry)"), "y")
+        .column_as(Expr::cust("ST_Z(geometry)"), "z")
+        // .column_as(Expr::cust("ST_SRID(geom)"), "coord_srid")
+        // .column_as(Expr::cust("ST_X(st_transform(geom, 4326))"), "longitude")
+        // .column_as(Expr::cust("ST_Y(st_transform(geom, 4326))"), "latitude")
+        // .into_model::<super::models::Site>()
         .all(&db)
         .await
         .unwrap();
+    // .all(&db)
+    // .await
+    // .unwrap();
 
     let related = objs
         .load_many(crate::sites::replicates::db::Entity, &db)
@@ -80,6 +96,8 @@ pub async fn get_all(
 
     let total_count: u64 = <super::db::Entity>::find()
         .filter(condition.clone())
+        .select_only()
+        .column(super::db::Column::Id)
         .count(&db)
         .await
         .unwrap_or(0);
@@ -98,7 +116,17 @@ pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<super::models::Site>, (StatusCode, Json<String>)> {
-    let obj = match super::db::Entity::find_by_id(id).one(&db).await {
+    println!("get_one");
+    let obj = match super::db::Entity::find_by_id(id)
+        .select_only()
+        .column(super::db::Column::Id)
+        .column(super::db::Column::Name)
+        .column_as(Expr::cust("ST_X(geometry)"), "x")
+        .column_as(Expr::cust("ST_Y(geometry)"), "y")
+        .column_as(Expr::cust("ST_Z(geometry)"), "z")
+        .one(&db)
+        .await
+    {
         Ok(Some(obj)) => obj,
         Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
         _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),

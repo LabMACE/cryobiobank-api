@@ -1,4 +1,4 @@
-use sea_orm::{DeriveIntoActiveModel, NotSet, Set};
+use sea_orm::{DeriveIntoActiveModel, FromQueryResult, NotSet, Set, TryGetable};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -10,7 +10,9 @@ pub struct Site {
     pub id: Uuid,
     pub name: String,
     pub replicates: Vec<super::replicates::models::SiteReplicate>,
-    // pub geometry: String,
+    pub x: Option<f64>,
+    pub y: Option<f64>,
+    pub z: Option<f64>,
 }
 
 impl From<Model> for Site {
@@ -19,6 +21,9 @@ impl From<Model> for Site {
             id: model.id,
             name: model.name,
             replicates: Vec::new(),
+            x: None,
+            y: None,
+            z: None,
             // geometry: model.geometry,
         }
     }
@@ -30,6 +35,9 @@ impl From<(Model, Vec<super::replicates::db::Model>)> for Site {
             id: model.id,
             name: model.name,
             replicates: replicates.into_iter().map(|r| r.into()).collect(),
+            x: model.x,
+            y: model.y,
+            z: model.z,
             // geometry: model.geometry,
         }
     }
@@ -55,6 +63,9 @@ impl From<SiteUpdate> for ActiveModel {
             name: update.name.map(Set).unwrap_or(NotSet),
             // geometry: update.geometry.map(Set).unwrap_or(NotSet),
             id: NotSet,
+            x: NotSet,
+            y: NotSet,
+            z: NotSet,
         }
     }
 }
