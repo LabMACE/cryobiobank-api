@@ -12,7 +12,7 @@ use axum::{
 use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
-use sea_orm::{query::*, DatabaseConnection, EntityTrait, LoaderTrait, ModelTrait};
+use sea_orm::{query::*, DatabaseConnection, EntityTrait};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -32,12 +32,12 @@ pub fn router(db: DatabaseConnection, keycloak_auth_instance: Arc<KeycloakAuthIn
         )
 }
 
-const RESOURCE_NAME: &str = "sites";
+const RESOURCE_NAME: &str = "site";
 
 #[utoipa::path(
     get,
     path = format!("/api/{}", RESOURCE_NAME),
-    responses((status = OK, body = super::models::Site))
+    responses((status = OK, body = super::models::SiteReplicate))
 )]
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
@@ -57,7 +57,6 @@ pub async fn get_all(
     );
 
     let objs = super::db::Entity::find()
-        // .find_with_related(crate::sites::replicates::db::Entity)
         .filter(condition.clone())
         .order_by(order_column, order_direction)
         .offset(offset)
@@ -66,17 +65,7 @@ pub async fn get_all(
         .await
         .unwrap();
 
-    let related = objs
-        .load_many(crate::sites::replicates::db::Entity, &db)
-        .await
-        .unwrap();
-
-    // Map the results from the database models
-    let response_objs: Vec<super::models::Site> = objs
-        .into_iter()
-        .zip(related)
-        .map(|(obj, related)| (obj, related).into())
-        .collect();
+    let objs: Vec<super::models::SiteReplicate> = objs.into_iter().map(|r| r.into()).collect();
 
     let total_count: u64 = <super::db::Entity>::find()
         .filter(condition.clone())
@@ -86,7 +75,7 @@ pub async fn get_all(
 
     let headers = calculate_content_range(offset, limit, total_count, RESOURCE_NAME);
 
-    (headers, Json(response_objs))
+    (headers, Json(objs))
 }
 
 #[utoipa::path(
@@ -97,20 +86,14 @@ pub async fn get_all(
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
-) -> Result<Json<super::models::Site>, (StatusCode, Json<String>)> {
+) -> Result<Json<super::models::SiteReplicate>, (StatusCode, Json<String>)> {
     let obj = match super::db::Entity::find_by_id(id).one(&db).await {
         Ok(Some(obj)) => obj,
         Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
         _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
     };
 
-    let related = obj
-        .find_related(crate::sites::replicates::db::Entity)
-        .all(&db)
-        .await
-        .unwrap();
-
-    let obj: super::models::Site = (obj, related).into();
+    let obj: super::models::SiteReplicate = obj.into();
 
     Ok(Json(obj))
 }

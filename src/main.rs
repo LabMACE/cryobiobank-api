@@ -55,6 +55,10 @@ async fn main() {
             sites::views::router(db.clone(), keycloak_auth_instance.clone()),
         )
         .nest(
+            "/api/site_replicates",
+            sites::replicates::views::router(db.clone(), keycloak_auth_instance.clone()),
+        )
+        .nest(
             "/api/samples",
             samples::views::router(db.clone(), keycloak_auth_instance.clone()),
         )
