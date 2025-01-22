@@ -1,7 +1,6 @@
 mod common;
 mod config;
 mod dna;
-mod external;
 mod isolates;
 mod samples;
 mod sites;
@@ -12,7 +11,6 @@ use config::Config;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DatabaseConnection};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
@@ -83,14 +81,6 @@ async fn main() {
             if let Err(err) = res {
                 eprintln!("Server error: {}", err);
             }
-        }
-        _ = tokio::spawn(async move {
-            loop {
-                crate::external::services::check_external_services().await;
-                tokio::time::sleep(Duration::from_secs(config.interval_external_services)).await;
-            }
-        }) => {
-            println!("Background task finished unexpectedly.");
         }
     }
 }

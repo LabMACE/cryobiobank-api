@@ -15,7 +15,6 @@ pub struct Config {
     pub keycloak_url: String,
     pub keycloak_realm: String,
     pub deployment: String,
-    pub interval_external_services: u64,
 }
 
 impl Config {
@@ -39,10 +38,6 @@ impl Config {
             keycloak_realm: env::var("KEYCLOAK_REALM").expect("KEYCLOAK_REALM must be set"),
             deployment: env::var("DEPLOYMENT")
                 .expect("DEPLOYMENT must be set, this can be local, dev, stage, or prod"),
-            interval_external_services: env::var("INTERVAL_EXTERNAL_SERVICES")
-                .unwrap_or_else(|_| "60".to_string())
-                .parse()
-                .unwrap(),
             db_prefix,
             db_url,
         };

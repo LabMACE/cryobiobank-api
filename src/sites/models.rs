@@ -1,4 +1,4 @@
-use sea_orm::{DeriveIntoActiveModel, FromQueryResult, NotSet, Set, TryGetable};
+use sea_orm::{DeriveIntoActiveModel, NotSet, Set};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -24,7 +24,6 @@ impl From<Model> for Site {
             x: None,
             y: None,
             z: None,
-            // geometry: model.geometry,
         }
     }
 }
@@ -38,7 +37,6 @@ impl From<(Model, Vec<super::replicates::db::Model>)> for Site {
             x: model.x,
             y: model.y,
             z: model.z,
-            // geometry: model.geometry,
         }
     }
 }
@@ -51,21 +49,58 @@ pub struct SiteCreate {
 
 #[derive(ToSchema, Deserialize)]
 pub struct SiteUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    // #[serde(default, skip_serializing_if = "Option::is_none")]
-    // pub geometry: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub name: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub x: Option<Option<f64>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub y: Option<Option<f64>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub z: Option<Option<f64>>,
 }
+impl SiteUpdate {
+    pub fn merge_into_activemodel(&self, mut model: ActiveModel) -> ActiveModel {
+        // If the field is Some(None), update the field to None, if None,
+        // do not update the field (double option)
 
-impl From<SiteUpdate> for ActiveModel {
-    fn from(update: SiteUpdate) -> Self {
-        Self {
-            name: update.name.map(Set).unwrap_or(NotSet),
-            // geometry: update.geometry.map(Set).unwrap_or(NotSet),
-            id: NotSet,
-            x: NotSet,
-            y: NotSet,
-            z: NotSet,
-        }
+        model.name = match self.name {
+            Some(Some(ref name)) => Set(name.clone()),
+            Some(_) => NotSet,
+            _ => NotSet,
+        };
+
+        model.x = match self.x {
+            Some(Some(ref x)) => Set(Some(x.clone())),
+            Some(_) => Set(None),
+            _ => NotSet,
+        };
+        model.y = match self.y {
+            Some(Some(ref y)) => Set(Some(y.clone())),
+            Some(_) => Set(None),
+            _ => NotSet,
+        };
+        model.z = match self.z {
+            Some(Some(ref z)) => Set(Some(z.clone())),
+            Some(_) => Set(None),
+            _ => NotSet,
+        };
+
+        model
     }
 }

@@ -14,15 +14,18 @@ use axum_keycloak_auth::{
 };
 use sea_orm::{
     query::*, sea_query::Expr, DatabaseConnection, EntityTrait, LoaderTrait, ModelTrait,
-    SelectorTrait,
 };
+use sea_orm::{ActiveModelTrait, DeleteResult};
 use std::sync::Arc;
 use uuid::Uuid;
 
 pub fn router(db: DatabaseConnection, keycloak_auth_instance: Arc<KeycloakAuthInstance>) -> Router {
     Router::new()
         .route("/", routing::get(get_all))
-        .route("/:id", routing::get(get_one))
+        .route(
+            "/:id",
+            routing::get(get_one).put(update_one).delete(delete_one),
+        )
         .with_state(db)
         .layer(
             KeycloakAuthLayer::<Role>::builder()
@@ -71,16 +74,9 @@ pub async fn get_all(
         .column_as(Expr::cust("ST_X(geometry)"), "x")
         .column_as(Expr::cust("ST_Y(geometry)"), "y")
         .column_as(Expr::cust("ST_Z(geometry)"), "z")
-        // .column_as(Expr::cust("ST_SRID(geom)"), "coord_srid")
-        // .column_as(Expr::cust("ST_X(st_transform(geom, 4326))"), "longitude")
-        // .column_as(Expr::cust("ST_Y(st_transform(geom, 4326))"), "latitude")
-        // .into_model::<super::models::Site>()
         .all(&db)
         .await
         .unwrap();
-    // .all(&db)
-    // .await
-    // .unwrap();
 
     let related = objs
         .load_many(crate::sites::replicates::db::Entity, &db)
@@ -116,7 +112,6 @@ pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<super::models::Site>, (StatusCode, Json<String>)> {
-    println!("get_one");
     let obj = match super::db::Entity::find_by_id(id)
         .select_only()
         .column(super::db::Column::Id)
@@ -141,4 +136,99 @@ pub async fn get_one(
     let obj: super::models::Site = (obj, related).into();
 
     Ok(Json(obj))
+}
+
+// #[utoipa::path(
+//     post,
+//     path = format!("/api/{}", RESOURCE_NAME),
+//     responses((status = CREATED, body = super::models::Submission))
+// )]
+// pub async fn create_one(
+//     State((db, _s3)): State<(DatabaseConnection, Arc<S3Client>)>,
+//     Json(payload): Json<super::models::SubmissionCreate>,
+// ) -> Result<(StatusCode, Json<super::models::Submission>), (StatusCode, Json<String>)> {
+//     let new_obj = super::db::Model {
+//         id: uuid::Uuid::new_v4(),
+//         name: payload.name,
+//         processing_has_started: false,
+//         processing_success: false,
+//         comment: payload.comment,
+//         created_on: chrono::Utc::now().naive_utc(),
+//         last_updated: chrono::Utc::now().naive_utc(),
+//     }
+//     .into_active_model();
+
+//     match super::db::Entity::insert(new_obj).exec(&db).await {
+//         Ok(insert_result) => {
+//             let response_obj: super::models::Submission =
+//                 super::db::Entity::find_by_id(insert_result.last_insert_id)
+//                     .one(&db)
+//                     .await
+//                     .expect("Failed to find object")
+//                     .unwrap()
+//                     .into();
+
+//             Ok((StatusCode::CREATED, Json(response_obj)))
+//         }
+//         Err(err) => match err.sql_err() {
+//             Some(SqlErr::UniqueConstraintViolation(_)) => {
+//                 Err((StatusCode::CONFLICT, Json("Duplicate entry".to_string())))
+//             }
+//             Some(_) => Err((
+//                 StatusCode::INTERNAL_SERVER_ERROR,
+//                 Json("Error adding object".to_string()),
+//             )),
+//             _ => Err((
+//                 StatusCode::INTERNAL_SERVER_ERROR,
+//                 Json("Server error".to_string()),
+//             )),
+//         },
+//     }
+// }
+
+#[utoipa::path(
+    put,
+    path = format!("/api/{}/{{id}}", RESOURCE_NAME),
+    responses((status = OK, body = super::models::Submission))
+)]
+pub async fn update_one(
+    State(db): State<DatabaseConnection>,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<super::models::SiteUpdate>,
+) -> impl IntoResponse {
+    let obj: super::db::ActiveModel = super::db::Entity::find_by_id(id)
+        .one(&db)
+        .await
+        .unwrap()
+        .expect("Failed to find object")
+        .into();
+
+    let obj: super::db::ActiveModel = payload.merge_into_activemodel(obj);
+
+    let obj: super::db::Model = obj.update(&db).await.unwrap();
+
+    let response_obj: super::models::Site = obj.into();
+
+    Json(response_obj)
+}
+
+#[utoipa::path(
+    delete,
+    path = format!("/api/{}/{{id}}", RESOURCE_NAME),
+    responses((status = NO_CONTENT))
+)]
+pub async fn delete_one(State(db): State<DatabaseConnection>, Path(id): Path<Uuid>) -> StatusCode {
+    let obj = super::db::Entity::find_by_id(id)
+        .one(&db)
+        .await
+        .unwrap()
+        .expect("Failed to find object");
+
+    let res: DeleteResult = obj.delete(&db).await.expect("Failed to delete object");
+
+    if res.rows_affected == 0 {
+        return StatusCode::NOT_FOUND;
+    }
+
+    StatusCode::NO_CONTENT
 }

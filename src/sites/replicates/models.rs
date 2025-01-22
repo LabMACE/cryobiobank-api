@@ -9,6 +9,7 @@ use super::db::Model;
 pub struct SiteReplicate {
     pub id: Uuid,
     pub name: String,
+    pub site_id: Uuid,
     pub sample_type: String,
     pub sampling_date: NaiveDate,
     pub sample_depth_cm: Option<f64>,
@@ -47,6 +48,7 @@ impl From<Model> for SiteReplicate {
         Self {
             id: model.id,
             name: model.name,
+            site_id: model.site_id,
             sample_type: model.sample_type,
             sampling_date: model.sampling_date,
             sample_depth_cm: model.sample_depth_cm,
