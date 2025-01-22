@@ -30,7 +30,6 @@ impl From<Model> for Site {
 
 impl From<(Model, Vec<super::replicates::db::Model>)> for Site {
     fn from((model, replicates): (Model, Vec<super::replicates::db::Model>)) -> Self {
-        println!("{:?}", model);
         Self {
             id: model.id,
             name: model.name,
