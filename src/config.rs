@@ -20,7 +20,6 @@ pub struct Config {
 impl Config {
     pub fn from_env() -> Self {
         dotenv().ok(); // Load from .env file if available
-
         let db_url = env::var("DB_URL").ok();
         let db_prefix = env::var("DB_PREFIX").unwrap_or_else(|_| "postgresql".to_string());
         let config = Config {

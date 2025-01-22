@@ -5,14 +5,14 @@ use uuid::Uuid;
 
 use super::db::{ActiveModel, Model};
 
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct Site {
     pub id: Uuid,
     pub name: String,
     pub replicates: Vec<super::replicates::models::SiteReplicate>,
-    pub x: Option<f64>,
-    pub y: Option<f64>,
-    pub z: Option<f64>,
+    pub longitude_4326: Option<f64>,
+    pub latitude_4326: Option<f64>,
+    pub elevation_metres: Option<f64>,
 }
 
 impl From<Model> for Site {
@@ -21,22 +21,23 @@ impl From<Model> for Site {
             id: model.id,
             name: model.name,
             replicates: Vec::new(),
-            x: None,
-            y: None,
-            z: None,
+            longitude_4326: None,
+            latitude_4326: None,
+            elevation_metres: None,
         }
     }
 }
 
 impl From<(Model, Vec<super::replicates::db::Model>)> for Site {
     fn from((model, replicates): (Model, Vec<super::replicates::db::Model>)) -> Self {
+        println!("{:?}", model);
         Self {
             id: model.id,
             name: model.name,
             replicates: replicates.into_iter().map(|r| r.into()).collect(),
-            x: model.x,
-            y: model.y,
-            z: model.z,
+            longitude_4326: model.longitude_4326,
+            latitude_4326: model.latitude_4326,
+            elevation_metres: model.elevation_metres,
         }
     }
 }
@@ -60,19 +61,19 @@ pub struct SiteUpdate {
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
-    pub x: Option<Option<f64>>,
+    pub longitude_4326: Option<Option<f64>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
-    pub y: Option<Option<f64>>,
+    pub latitude_4326: Option<Option<f64>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
-    pub z: Option<Option<f64>>,
+    pub elevation_metres: Option<Option<f64>>,
 }
 impl SiteUpdate {
     pub fn merge_into_activemodel(&self, mut model: ActiveModel) -> ActiveModel {
@@ -85,18 +86,18 @@ impl SiteUpdate {
             _ => NotSet,
         };
 
-        model.x = match self.x {
-            Some(Some(ref x)) => Set(Some(x.clone())),
+        model.longitude_4326 = match self.longitude_4326 {
+            Some(Some(ref longitude_4326)) => Set(Some(longitude_4326.clone())),
             Some(_) => Set(None),
             _ => NotSet,
         };
-        model.y = match self.y {
-            Some(Some(ref y)) => Set(Some(y.clone())),
+        model.latitude_4326 = match self.latitude_4326 {
+            Some(Some(ref latitude_4326)) => Set(Some(latitude_4326.clone())),
             Some(_) => Set(None),
             _ => NotSet,
         };
-        model.z = match self.z {
-            Some(Some(ref z)) => Set(Some(z.clone())),
+        model.elevation_metres = match self.elevation_metres {
+            Some(Some(ref elevation_metres)) => Set(Some(elevation_metres.clone())),
             Some(_) => Set(None),
             _ => NotSet,
         };

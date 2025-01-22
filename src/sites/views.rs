@@ -12,9 +12,7 @@ use axum::{
 use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
-use sea_orm::{
-    query::*, sea_query::Expr, DatabaseConnection, EntityTrait, LoaderTrait, ModelTrait,
-};
+use sea_orm::{query::*, DatabaseConnection, EntityTrait, LoaderTrait, ModelTrait};
 use sea_orm::{ActiveModelTrait, DeleteResult};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -23,7 +21,7 @@ pub fn router(db: DatabaseConnection, keycloak_auth_instance: Arc<KeycloakAuthIn
     Router::new()
         .route("/", routing::get(get_all))
         .route(
-            "/:id",
+            "/{id}",
             routing::get(get_one).put(update_one).delete(delete_one),
         )
         .with_state(db)
@@ -68,12 +66,6 @@ pub async fn get_all(
         .order_by(order_column, order_direction)
         .offset(offset)
         .limit(limit)
-        .select_only()
-        .column(super::db::Column::Id)
-        .column(super::db::Column::Name)
-        .column_as(Expr::cust("ST_X(geometry)"), "x")
-        .column_as(Expr::cust("ST_Y(geometry)"), "y")
-        .column_as(Expr::cust("ST_Z(geometry)"), "z")
         .all(&db)
         .await
         .unwrap();
@@ -113,12 +105,12 @@ pub async fn get_one(
     Path(id): Path<Uuid>,
 ) -> Result<Json<super::models::Site>, (StatusCode, Json<String>)> {
     let obj = match super::db::Entity::find_by_id(id)
-        .select_only()
-        .column(super::db::Column::Id)
-        .column(super::db::Column::Name)
-        .column_as(Expr::cust("ST_X(geometry)"), "x")
-        .column_as(Expr::cust("ST_Y(geometry)"), "y")
-        .column_as(Expr::cust("ST_Z(geometry)"), "z")
+        // .select_only()
+        // .column(super::db::Column::Id)
+        // .column(super::db::Column::Name)
+        // .column_as(Expr::cust("ST_X(geometry)"), "x")
+        // .column_as(Expr::cust("ST_Y(geometry)"), "y")
+        // .column_as(Expr::cust("ST_Z(geometry)"), "z")
         .one(&db)
         .await
     {
@@ -189,27 +181,33 @@ pub async fn get_one(
 #[utoipa::path(
     put,
     path = format!("/api/{}/{{id}}", RESOURCE_NAME),
-    responses((status = OK, body = super::models::Submission))
+    responses((status = OK, body = super::models::Site))
 )]
 pub async fn update_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
     Json(payload): Json<super::models::SiteUpdate>,
 ) -> impl IntoResponse {
-    let obj: super::db::ActiveModel = super::db::Entity::find_by_id(id)
+    let db_obj: super::db::ActiveModel = super::db::Entity::find_by_id(id)
         .one(&db)
         .await
         .unwrap()
         .expect("Failed to find object")
         .into();
 
-    let obj: super::db::ActiveModel = payload.merge_into_activemodel(obj);
+    let updated_obj: super::db::ActiveModel = payload.merge_into_activemodel(db_obj);
+    let response_obj: super::models::Site = updated_obj.update(&db).await.unwrap().into();
 
-    let obj: super::db::Model = obj.update(&db).await.unwrap();
+    // Assert response is ok
+    assert_eq!(response_obj.id, id);
 
-    let response_obj: super::models::Site = obj.into();
+    // Return the new object
+    let obj = get_one(State(db.clone()), Path(id.clone()))
+        .await
+        .unwrap()
+        .0;
 
-    Json(response_obj)
+    Json(obj)
 }
 
 #[utoipa::path(

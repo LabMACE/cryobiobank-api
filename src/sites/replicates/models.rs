@@ -1,16 +1,17 @@
 use chrono::NaiveDate;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use super::db::Model;
 
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct SiteReplicate {
     pub id: Uuid,
     pub name: String,
     pub site_id: Uuid,
     pub sample_type: String,
+    #[schema(value_type = String, format = Date)]
     pub sampling_date: NaiveDate,
     pub sample_depth_cm: Option<f64>,
     pub snow_depth_cm: Option<f64>,

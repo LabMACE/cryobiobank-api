@@ -1,7 +1,6 @@
 use sea_orm::entity::prelude::*;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, ToSchema)]
 #[sea_orm(table_name = "sites")]
 pub struct Model {
@@ -10,10 +9,9 @@ pub struct Model {
 
     #[sea_orm(unique)]
     pub name: String,
-    pub x: Option<f64>,
-    pub y: Option<f64>,
-    pub z: Option<f64>,
-    // pub geometry: String,
+    pub latitude_4326: Option<f64>,
+    pub longitude_4326: Option<f64>,
+    pub elevation_metres: Option<f64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

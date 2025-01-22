@@ -19,7 +19,7 @@ use uuid::Uuid;
 pub fn router(db: DatabaseConnection, keycloak_auth_instance: Arc<KeycloakAuthInstance>) -> Router {
     Router::new()
         .route("/", routing::get(get_all))
-        .route("/:id", routing::get(get_one))
+        .route("/{id}", routing::get(get_one))
         .with_state(db)
         .layer(
             KeycloakAuthLayer::<Role>::builder()
@@ -81,7 +81,7 @@ pub async fn get_all(
 #[utoipa::path(
     get,
     path = format!("/api/{}/{{id}}", RESOURCE_NAME),
-    responses((status = OK, body = super::models::Site))
+    responses((status = OK, body = super::models::SiteReplicate))
 )]
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
