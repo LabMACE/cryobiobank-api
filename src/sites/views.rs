@@ -24,7 +24,7 @@ pub fn router(
     keycloak_auth_instance: Option<Arc<KeycloakAuthInstance>>,
 ) -> Router {
     let mut router = Router::new()
-        .route("/", routing::get(get_all))
+        .route("/", routing::get(get_all).post(create_one))
         .route(
             "/{id}",
             routing::get(get_one).put(update_one).delete(delete_one),

@@ -52,8 +52,6 @@ async fn tear_down_test_db(db: &DatabaseConnection) {
         .expect("Failed to create public schema");
 }
 
-/// A helper function to insert seed data into the DB.
-/// This example seeds one "Test Site".
 async fn seed_sites(db: &DatabaseConnection) {
     let test_site = db::ActiveModel {
         id: Set(Uuid::new_v4()),
@@ -70,9 +68,6 @@ async fn seed_sites(db: &DatabaseConnection) {
         .expect("Failed to insert test site");
 }
 
-/// A helper function to build the Axum router (like `main.rs`) but for testing only.
-/// If you want to test multiple endpoints, nest them all here the same way you do in main.rs.
-/// This example just includes the sites router. Adjust as needed.
 fn build_test_app(db: DatabaseConnection) -> Router {
     Router::new()
         .route("/healthz", axum::routing::get(common_views::healthz))
@@ -83,9 +78,37 @@ fn build_test_app(db: DatabaseConnection) -> Router {
         .with_state(db.clone())
         .nest("/api/sites", views::router(db.clone(), None))
 }
+
+#[tokio::test]
+async fn test_api_config() {
+    let db = setup_test_db().await;
+    // tear_down_test_db(&db).await;
+    seed_sites(&db).await;
+    let app = build_test_app(db.clone());
+    let request = Request::builder()
+        .uri("/api/config")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body_bytes = to_bytes(response.into_body(), 1024 * 1024)
+        .await
+        .expect("Failed to read response body");
+    println!("{:?}", body_bytes);
+    let config: Config =
+        serde_json::from_slice(&body_bytes).expect("Failed to parse JSON response into Config");
+
+    println!("{:?}", config.app_name);
+    assert_eq!(config.deployment, "test");
+    tear_down_test_db(&db).await;
+}
+
 #[tokio::test]
 async fn test_get_all_sites() {
     let db = setup_test_db().await;
+    // tear_down_test_db(&db).await;
     seed_sites(&db).await;
     let app = build_test_app(db.clone());
     let request = Request::builder()
@@ -109,7 +132,5 @@ async fn test_get_all_sites() {
     assert_eq!(first_site.longitude_4326, 1.23);
     assert_eq!(first_site.latitude_4326, 4.56);
     assert_eq!(first_site.elevation_metres, 7.89);
-
-    // 9) Tear down the test DB so that the next test starts fresh.
     tear_down_test_db(&db).await;
 }
