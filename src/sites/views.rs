@@ -12,28 +12,38 @@ use axum::{
 use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
-use sea_orm::{query::*, DatabaseConnection, EntityTrait, LoaderTrait, ModelTrait};
+use sea_orm::{
+    query::*, DatabaseConnection, EntityTrait, IntoActiveModel, LoaderTrait, ModelTrait, SqlErr,
+};
 use sea_orm::{ActiveModelTrait, DeleteResult};
 use std::sync::Arc;
 use uuid::Uuid;
 
-pub fn router(db: DatabaseConnection, keycloak_auth_instance: Arc<KeycloakAuthInstance>) -> Router {
-    Router::new()
+pub fn router(
+    db: DatabaseConnection,
+    keycloak_auth_instance: Option<Arc<KeycloakAuthInstance>>,
+) -> Router {
+    let mut router = Router::new()
         .route("/", routing::get(get_all))
         .route(
             "/{id}",
             routing::get(get_one).put(update_one).delete(delete_one),
         )
-        .with_state(db)
-        .layer(
+        .with_state(db);
+
+    if let Some(instance) = keycloak_auth_instance {
+        router = router.layer(
             KeycloakAuthLayer::<Role>::builder()
-                .instance(keycloak_auth_instance)
+                .instance(instance)
                 .passthrough_mode(PassthroughMode::Block)
                 .persist_raw_claims(false)
                 .expected_audiences(vec![String::from("account")])
                 .required_roles(vec![Role::Administrator])
                 .build(),
-        )
+        );
+    }
+
+    router
 }
 
 const RESOURCE_NAME: &str = "sites";
@@ -104,16 +114,7 @@ pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<super::models::Site>, (StatusCode, Json<String>)> {
-    let obj = match super::db::Entity::find_by_id(id)
-        // .select_only()
-        // .column(super::db::Column::Id)
-        // .column(super::db::Column::Name)
-        // .column_as(Expr::cust("ST_X(geometry)"), "x")
-        // .column_as(Expr::cust("ST_Y(geometry)"), "y")
-        // .column_as(Expr::cust("ST_Z(geometry)"), "z")
-        .one(&db)
-        .await
-    {
+    let obj = match super::db::Entity::find_by_id(id).one(&db).await {
         Ok(Some(obj)) => obj,
         Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
         _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
@@ -130,53 +131,49 @@ pub async fn get_one(
     Ok(Json(obj))
 }
 
-// #[utoipa::path(
-//     post,
-//     path = format!("/api/{}", RESOURCE_NAME),
-//     responses((status = CREATED, body = super::models::Submission))
-// )]
-// pub async fn create_one(
-//     State((db, _s3)): State<(DatabaseConnection, Arc<S3Client>)>,
-//     Json(payload): Json<super::models::SubmissionCreate>,
-// ) -> Result<(StatusCode, Json<super::models::Submission>), (StatusCode, Json<String>)> {
-//     let new_obj = super::db::Model {
-//         id: uuid::Uuid::new_v4(),
-//         name: payload.name,
-//         processing_has_started: false,
-//         processing_success: false,
-//         comment: payload.comment,
-//         created_on: chrono::Utc::now().naive_utc(),
-//         last_updated: chrono::Utc::now().naive_utc(),
-//     }
-//     .into_active_model();
+#[utoipa::path(
+    post,
+    path = format!("/api/{}", RESOURCE_NAME),
+    responses((status = CREATED, body = super::models::Site))
+)]
+pub async fn create_one(
+    State(db): State<DatabaseConnection>,
+    Json(payload): Json<super::models::SiteCreate>,
+) -> Result<(StatusCode, Json<super::models::Site>), (StatusCode, Json<String>)> {
+    let new_obj = super::db::Model {
+        id: uuid::Uuid::new_v4(),
+        name: payload.name,
+        latitude_4326: payload.latitude_4326,
+        longitude_4326: payload.longitude_4326,
+        elevation_metres: payload.elevation_metres,
+    }
+    .into_active_model();
 
-//     match super::db::Entity::insert(new_obj).exec(&db).await {
-//         Ok(insert_result) => {
-//             let response_obj: super::models::Submission =
-//                 super::db::Entity::find_by_id(insert_result.last_insert_id)
-//                     .one(&db)
-//                     .await
-//                     .expect("Failed to find object")
-//                     .unwrap()
-//                     .into();
+    match super::db::Entity::insert(new_obj).exec(&db).await {
+        Ok(insert_result) => {
+            let response_obj: super::models::Site =
+                get_one(State(db.clone()), Path(insert_result.last_insert_id))
+                    .await
+                    .unwrap()
+                    .0;
 
-//             Ok((StatusCode::CREATED, Json(response_obj)))
-//         }
-//         Err(err) => match err.sql_err() {
-//             Some(SqlErr::UniqueConstraintViolation(_)) => {
-//                 Err((StatusCode::CONFLICT, Json("Duplicate entry".to_string())))
-//             }
-//             Some(_) => Err((
-//                 StatusCode::INTERNAL_SERVER_ERROR,
-//                 Json("Error adding object".to_string()),
-//             )),
-//             _ => Err((
-//                 StatusCode::INTERNAL_SERVER_ERROR,
-//                 Json("Server error".to_string()),
-//             )),
-//         },
-//     }
-// }
+            Ok((StatusCode::CREATED, Json(response_obj)))
+        }
+        Err(err) => match err.sql_err() {
+            Some(SqlErr::UniqueConstraintViolation(_)) => {
+                Err((StatusCode::CONFLICT, Json("Duplicate entry".to_string())))
+            }
+            Some(_) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("Error adding object".to_string()),
+            )),
+            _ => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("Server error".to_string()),
+            )),
+        },
+    }
+}
 
 #[utoipa::path(
     put,

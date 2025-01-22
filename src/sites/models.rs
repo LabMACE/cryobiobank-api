@@ -10,9 +10,9 @@ pub struct Site {
     pub id: Uuid,
     pub name: String,
     pub replicates: Vec<super::replicates::models::SiteReplicate>,
-    pub longitude_4326: Option<f64>,
-    pub latitude_4326: Option<f64>,
-    pub elevation_metres: Option<f64>,
+    pub longitude_4326: f64,
+    pub latitude_4326: f64,
+    pub elevation_metres: f64,
 }
 
 impl From<Model> for Site {
@@ -21,9 +21,9 @@ impl From<Model> for Site {
             id: model.id,
             name: model.name,
             replicates: Vec::new(),
-            longitude_4326: None,
-            latitude_4326: None,
-            elevation_metres: None,
+            longitude_4326: model.longitude_4326,
+            latitude_4326: model.latitude_4326,
+            elevation_metres: model.elevation_metres,
         }
     }
 }
@@ -45,7 +45,9 @@ impl From<(Model, Vec<super::replicates::db::Model>)> for Site {
 #[derive(ToSchema, Deserialize, Serialize, DeriveIntoActiveModel)]
 pub struct SiteCreate {
     pub name: String,
-    // pub geometry: String,
+    pub longitude_4326: f64,
+    pub latitude_4326: f64,
+    pub elevation_metres: f64,
 }
 
 #[derive(ToSchema, Deserialize)]
@@ -87,18 +89,18 @@ impl SiteUpdate {
         };
 
         model.longitude_4326 = match self.longitude_4326 {
-            Some(Some(ref longitude_4326)) => Set(Some(longitude_4326.clone())),
-            Some(_) => Set(None),
+            Some(Some(ref longitude_4326)) => Set(longitude_4326.clone()),
+            Some(_) => NotSet,
             _ => NotSet,
         };
         model.latitude_4326 = match self.latitude_4326 {
-            Some(Some(ref latitude_4326)) => Set(Some(latitude_4326.clone())),
-            Some(_) => Set(None),
+            Some(Some(ref latitude_4326)) => Set(latitude_4326.clone()),
+            Some(_) => NotSet,
             _ => NotSet,
         };
         model.elevation_metres = match self.elevation_metres {
-            Some(Some(ref elevation_metres)) => Set(Some(elevation_metres.clone())),
-            Some(_) => Set(None),
+            Some(Some(ref elevation_metres)) => Set(elevation_metres.clone()),
+            Some(_) => NotSet,
             _ => NotSet,
         };
 

@@ -9,9 +9,9 @@ pub struct Model {
 
     #[sea_orm(unique)]
     pub name: String,
-    pub latitude_4326: Option<f64>,
-    pub longitude_4326: Option<f64>,
-    pub elevation_metres: Option<f64>,
+    pub latitude_4326: f64,
+    pub longitude_4326: f64,
+    pub elevation_metres: f64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

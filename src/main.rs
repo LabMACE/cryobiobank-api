@@ -50,7 +50,7 @@ async fn main() {
         .with_state(db.clone())
         .nest(
             "/api/sites",
-            sites::views::router(db.clone(), keycloak_auth_instance.clone()),
+            sites::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
         )
         .nest(
             "/api/site_replicates",
