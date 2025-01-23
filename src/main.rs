@@ -54,19 +54,19 @@ async fn main() {
         )
         .nest(
             "/api/site_replicates",
-            sites::replicates::views::router(db.clone(), keycloak_auth_instance.clone()),
+            sites::replicates::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
         )
         .nest(
             "/api/samples",
-            samples::views::router(db.clone(), keycloak_auth_instance.clone()),
+            samples::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
         )
         .nest(
             "/api/isolates",
-            isolates::views::router(db.clone(), keycloak_auth_instance.clone()),
+            isolates::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
         )
         .nest(
             "/api/dna",
-            dna::views::router(db.clone(), keycloak_auth_instance.clone()),
+            dna::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
         );
 
     let addr: std::net::SocketAddr = "0.0.0.0:3000".parse().unwrap();
