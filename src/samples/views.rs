@@ -12,7 +12,9 @@ use axum::{
 use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
-use sea_orm::{query::*, DatabaseConnection, EntityTrait};
+use sea_orm::{
+    query::*, ActiveModelTrait, DatabaseConnection, DeleteResult, EntityTrait, ModelTrait, SqlErr,
+};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -23,8 +25,9 @@ pub fn router(
     keycloak_auth_instance: Option<Arc<KeycloakAuthInstance>>,
 ) -> Router {
     let mut mutating_router = Router::new()
-        // .route("/", routing::post(create_one))
-        // .route("/{id}", routing::put(update_one).delete(delete_one))
+        .route("/", routing::post(create_one))
+        .route("/{id}", routing::put(update_one).delete(delete_one))
+        .route("/batch", routing::delete(delete_many))
         .with_state(db.clone());
 
     if let Some(instance) = keycloak_auth_instance {
@@ -129,4 +132,127 @@ pub async fn get_one(
     let submission: super::models::Sample = obj.clone().into();
 
     Ok(Json(submission))
+}
+
+#[utoipa::path(
+    post,
+    path = format!("/api/{}", RESOURCE_NAME),
+    responses((status = CREATED, body = super::models::Sample))
+)]
+pub async fn create_one(
+    State(db): State<DatabaseConnection>,
+    Json(payload): Json<super::models::SampleCreate>,
+) -> Result<(StatusCode, Json<super::models::Sample>), (StatusCode, Json<String>)> {
+    let new_obj: super::db::ActiveModel = payload.into();
+
+    match super::db::Entity::insert(new_obj).exec(&db).await {
+        Ok(insert_result) => {
+            let response_obj: super::models::Sample =
+                get_one(State(db.clone()), Path(insert_result.last_insert_id))
+                    .await
+                    .unwrap()
+                    .0;
+
+            Ok((StatusCode::CREATED, Json(response_obj)))
+        }
+        Err(err) => match err.sql_err() {
+            Some(SqlErr::UniqueConstraintViolation(_)) => {
+                Err((StatusCode::CONFLICT, Json("Duplicate entry".to_string())))
+            }
+            Some(_) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("Error adding object".to_string()),
+            )),
+            _ => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("Server error".to_string()),
+            )),
+        },
+    }
+}
+
+#[utoipa::path(
+    put,
+    path = format!("/api/{}/{{id}}", RESOURCE_NAME),
+    responses((status = OK, body = super::models::Sample))
+)]
+pub async fn update_one(
+    State(db): State<DatabaseConnection>,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<super::models::SampleUpdate>,
+) -> impl IntoResponse {
+    let db_obj: super::db::ActiveModel = super::db::Entity::find_by_id(id)
+        .one(&db)
+        .await
+        .unwrap()
+        .expect("Failed to find object")
+        .into();
+
+    let updated_obj: super::db::ActiveModel = payload.merge_into_activemodel(db_obj);
+    let response_obj: super::models::Sample = updated_obj.update(&db).await.unwrap().into();
+
+    // Assert response is ok
+    assert_eq!(response_obj.id, id);
+
+    // Return the new object
+    let obj = get_one(State(db.clone()), Path(id.clone()))
+        .await
+        .unwrap()
+        .0;
+
+    Json(obj)
+}
+
+#[utoipa::path(
+    delete,
+    path = format!("/api/{}/{{id}}", RESOURCE_NAME),
+    responses((status = NO_CONTENT))
+)]
+pub async fn delete_one(
+    State(db): State<DatabaseConnection>,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let obj = super::db::Entity::find_by_id(id.clone())
+        .one(&db)
+        .await
+        .unwrap()
+        .expect("Failed to find object");
+
+    let res: DeleteResult = obj.delete(&db).await.expect("Failed to delete object");
+
+    if res.rows_affected == 0 {
+        return (StatusCode::NOT_FOUND, Json("Not Found".to_string()));
+    }
+
+    (StatusCode::OK, Json(id.to_string()))
+}
+
+#[utoipa::path(
+    delete,
+    path = format!("/api/{}/batch", RESOURCE_NAME),
+    responses((status = NO_CONTENT))
+)]
+pub async fn delete_many(
+    State(db): State<DatabaseConnection>,
+    Json(ids): Json<Vec<Uuid>>,
+) -> (StatusCode, Json<Vec<String>>) {
+    // Deletes all IDs in the list, then returns a list of deleted IDs
+
+    let mut deleted_ids = Vec::new();
+    for id in ids {
+        let obj = super::db::Entity::find_by_id(id.clone())
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Failed to find object");
+
+        let res: DeleteResult = obj.delete(&db).await.expect("Failed to delete object");
+
+        if res.rows_affected > 0 {
+            deleted_ids.push(id.to_string());
+        }
+    }
+    println!("Deleted IDs: {:?}", deleted_ids);
+
+    (StatusCode::OK, Json(deleted_ids))
 }

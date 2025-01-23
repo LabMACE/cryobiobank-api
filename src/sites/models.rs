@@ -1,4 +1,4 @@
-use sea_orm::{DeriveIntoActiveModel, NotSet, Set};
+use sea_orm::{DeriveIntoActiveModel, IntoActiveModel, NotSet, Set};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -47,6 +47,19 @@ pub struct SiteCreate {
     pub longitude_4326: f64,
     pub latitude_4326: f64,
     pub elevation_metres: f64,
+}
+
+impl From<SiteCreate> for ActiveModel {
+    fn from(create: SiteCreate) -> Self {
+        super::db::Model {
+            id: Uuid::new_v4(),
+            name: create.name,
+            longitude_4326: create.longitude_4326,
+            latitude_4326: create.latitude_4326,
+            elevation_metres: create.elevation_metres,
+        }
+        .into_active_model()
+    }
 }
 
 #[derive(ToSchema, Deserialize)]
