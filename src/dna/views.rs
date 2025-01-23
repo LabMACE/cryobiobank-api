@@ -74,6 +74,7 @@ pub async fn get_all(
             ("name", super::db::Column::Name),
             ("description", super::db::Column::Description),
             ("extraction_method", super::db::Column::ExtractionMethod),
+            ("id", super::db::Column::Id),
         ],
     );
 

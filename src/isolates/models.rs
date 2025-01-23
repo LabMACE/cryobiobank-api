@@ -159,7 +159,7 @@ impl IsolateUpdate {
 
         model.dna_id = match self.dna_id {
             Some(Some(ref dna_id)) => Set(Some(dna_id.clone())),
-            Some(_) => NotSet,
+            Some(_) => Set(None),
             _ => NotSet,
         };
 
