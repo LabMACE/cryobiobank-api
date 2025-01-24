@@ -17,9 +17,14 @@ use sea_orm::{
     ModelTrait, SqlErr,
 };
 use std::sync::Arc;
+use utoipa::OpenApi;
+use utoipa_scalar::{Scalar, Servable as ScalarServable};
 use uuid::Uuid;
 
 const RESOURCE_NAME: &str = "sites";
+#[derive(OpenApi)]
+#[openapi(paths(get_all, get_one, create_one, update_one, delete_one, delete_many))]
+struct ApiDoc;
 
 pub fn router(
     db: DatabaseConnection,
@@ -50,10 +55,12 @@ pub fn router(
 
     // All the routes that do not mutate the database.
     let router = Router::new()
+        // let router = router
         .route("/", routing::get(get_all))
         .route("/{id}", routing::get(get_one))
         .with_state(db.clone())
-        .merge(mutating_router);
+        .merge(mutating_router)
+        .merge(Scalar::with_url("/docs", ApiDoc::openapi()));
 
     router
 }
@@ -127,7 +134,12 @@ pub async fn get_one(
     let obj = match super::db::Entity::find_by_id(id).one(&db).await {
         Ok(Some(obj)) => obj,
         Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
-        _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
+        Err(_) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("Internal Server Error".to_string()),
+            ))
+        }
     };
 
     let related = obj
@@ -210,56 +222,76 @@ pub async fn update_one(
     Json(obj)
 }
 
+// Deletes a single object
 #[utoipa::path(
     delete,
     path = format!("/api/{}/{{id}}", RESOURCE_NAME),
-    responses((status = NO_CONTENT))
+    responses(
+        (status = NO_CONTENT, body = Uuid),
+        (status = NOT_FOUND, body = String),
+        (status = INTERNAL_SERVER_ERROR, body = String)
+    )
 )]
 pub async fn delete_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
-) -> impl IntoResponse {
-    let obj = super::db::Entity::find_by_id(id.clone())
-        .one(&db)
-        .await
-        .unwrap()
-        .expect("Failed to find object");
+) -> Result<(StatusCode, Json<Uuid>), (StatusCode, Json<String>)> {
+    let obj = match super::db::Entity::find_by_id(id.clone()).one(&db).await {
+        Ok(Some(obj)) => obj,
+        Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
+        _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
+    };
 
-    let res: DeleteResult = obj.delete(&db).await.expect("Failed to delete object");
+    let res: DeleteResult = obj.delete(&db).await.map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json("Failed to delete object".to_string()),
+        )
+    })?;
 
     if res.rows_affected == 0 {
-        return (StatusCode::NOT_FOUND, Json("Not Found".to_string()));
+        return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string())));
     }
 
-    (StatusCode::OK, Json(id.to_string()))
+    Ok((StatusCode::NO_CONTENT, Json(id)))
 }
 
 #[utoipa::path(
     delete,
     path = format!("/api/{}/batch", RESOURCE_NAME),
-    responses((status = NO_CONTENT))
+    responses(
+        (status = NO_CONTENT, body = Vec<Uuid>),
+        (status = INTERNAL_SERVER_ERROR, body = String)
+    ),
 )]
 pub async fn delete_many(
     State(db): State<DatabaseConnection>,
     Json(ids): Json<Vec<Uuid>>,
-) -> (StatusCode, Json<Vec<String>>) {
-    // Deletes all IDs in the list, then returns a list of deleted IDs
-
+) -> Result<(StatusCode, Json<Vec<Uuid>>), (StatusCode, Json<String>)> {
     let mut deleted_ids = Vec::new();
     for id in ids {
-        let obj = super::db::Entity::find_by_id(id.clone())
-            .one(&db)
-            .await
-            .unwrap()
-            .expect("Failed to find object");
+        let obj = match super::db::Entity::find_by_id(id.clone()).one(&db).await {
+            Ok(Some(obj)) => obj,
+            Ok(None) => continue,
+            Err(_) => {
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json("Failed to delete objects".to_string()),
+                ))
+            }
+        };
 
-        let res: DeleteResult = obj.delete(&db).await.expect("Failed to delete object");
+        let res: DeleteResult = obj.delete(&db).await.map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("Failed to delete object".to_string()),
+            )
+        })?;
 
         if res.rows_affected > 0 {
-            deleted_ids.push(id.to_string());
+            deleted_ids.push(id);
         }
     }
-    println!("Deleted IDs: {:?}", deleted_ids);
 
-    (StatusCode::OK, Json(deleted_ids))
+    Ok((StatusCode::NO_CONTENT, Json(deleted_ids)))
 }
