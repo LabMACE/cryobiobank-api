@@ -11,6 +11,8 @@ use config::Config;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DatabaseConnection};
 use std::sync::Arc;
+// use tower_http::services::SwaggerUi;
+// use tower_http::services::{ApiDoc, Redoc, Scalar};
 
 #[tokio::main]
 async fn main() {
@@ -67,7 +69,11 @@ async fn main() {
         .nest(
             "/api/dna",
             dna::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
-        );
+        )
+        // .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        // .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
+        // .merge(Scalar::with_url("/scalar", ApiDoc::openapi()))
+        ;
 
     let addr: std::net::SocketAddr = "0.0.0.0:3000".parse().unwrap();
     println!("Listening on {}", addr);

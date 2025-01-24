@@ -28,7 +28,7 @@ sea-orm = { version = "1.1.4", features = [
     "with-json",
 ], default-features = false }
 sea-orm-migration = "1.0.1"
-utoipa = { version = "5.3.1", features = ["axum_extras", "uuid"] }
+utoipa = { version = "5.3.1", features = ["axum_extras", "uuid", "chrono"] }
 sea-query = "0.32.1"
 utoipa-swagger-ui = { version = "9.0.0", features = ["axum"] }
 utoipa-redoc = { version = "6.0.0", features = ["axum"] }

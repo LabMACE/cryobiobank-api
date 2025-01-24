@@ -15,7 +15,6 @@ pub struct Model {
 
     #[sea_orm(column_name = "sample_type")]
     pub sample_type: String,
-    #[schema(value_type = String, format = Date)]
     pub sampling_date: NaiveDate,
     pub sample_depth_cm: Option<f64>,
     pub snow_depth_cm: Option<f64>,

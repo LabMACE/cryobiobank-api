@@ -11,7 +11,6 @@ pub struct SiteReplicate {
     pub name: String,
     pub site_id: Uuid,
     pub sample_type: String,
-    #[schema(value_type = String, format = Date)]
     pub sampling_date: NaiveDate,
     pub sample_depth_cm: Option<f64>,
     pub snow_depth_cm: Option<f64>,
@@ -89,7 +88,6 @@ pub struct SiteReplicateCreate {
     pub name: String,
     pub site_id: Uuid,
     pub sample_type: String,
-    #[schema(value_type = String, format = Date)]
     pub sampling_date: NaiveDate,
     pub sample_depth_cm: Option<f64>,
     pub snow_depth_cm: Option<f64>,
@@ -189,7 +187,6 @@ pub struct SiteReplicateUpdate {
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
-    #[schema(value_type = String, format = Date)]
     pub sampling_date: Option<Option<NaiveDate>>,
     #[serde(
         default,
