@@ -35,7 +35,7 @@ impl Config {
                 .expect("DEPLOYMENT must be set, this can be local, dev, stage, or prod"),
             db_url,
         };
-        println!("{:?}", config);
+
         config
     }
 }
