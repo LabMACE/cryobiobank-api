@@ -1,9 +1,8 @@
+use super::db::{ActiveModel, Model};
 use sea_orm::{DeriveIntoActiveModel, IntoActiveModel, NotSet, Set};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-use super::db::{ActiveModel, Model};
 
 #[derive(ToSchema, Serialize, Deserialize, Debug)]
 pub struct Site {
