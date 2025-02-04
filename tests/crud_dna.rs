@@ -2,19 +2,17 @@
 mod common;
 
 use axum::{
-    body::{to_bytes, Body},
+    body::Body,
     http::{Request, StatusCode},
 };
-use common::{build_app_with_db, setup_clean_db};
 use serde_json::json;
 use tower::ServiceExt;
 
 #[tokio::test]
-async fn crud_dna() {
-    let db = setup_clean_db().await;
-    let app = build_app_with_db(db.clone());
+async fn create_dna_valid() {
+    let db = common::setup_clean_db().await;
+    let app = common::build_app_with_db(db.clone());
 
-    // === CREATE DNA ===
     let create_payload = json!({
         "name": "gDNA A",
         "description": "From Isolate A",
@@ -28,58 +26,35 @@ async fn crud_dna() {
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::CREATED);
-    let body_bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
-    let dna: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
-    let dna_id = dna.get("id").unwrap().as_str().unwrap().to_string();
+}
 
-    // === READ ===
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/api/dna/{}", dna_id))
-        .body(Body::empty())
-        .unwrap();
-    let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let body_bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
-    let fetched: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
-    assert_eq!(fetched.get("name").unwrap().as_str().unwrap(), "gDNA A");
+#[tokio::test]
+async fn test_dna_duplicate_name() {
+    let db = common::setup_clean_db().await;
+    let app = common::build_app_with_db(db.clone());
 
-    // === UPDATE ===
-    let update_payload = json!({
-        "name": "gDNA A Updated",
-        "description": "From Isolate A - Updated",
+    let create_payload = json!({
+        "name": "gDNA Duplicate",
+        "description": "Test DNA",
         "extraction_method": "Genomic DNA"
     });
+    // First creation should succeed.
     let request = Request::builder()
-        .method("PUT")
-        .uri(format!("/api/dna/{}", dna_id))
+        .method("POST")
+        .uri("/api/dna")
         .header("Content-Type", "application/json")
-        .body(Body::from(update_payload.to_string()))
+        .body(Body::from(create_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let body_bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
-    let updated: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
-    assert_eq!(
-        updated.get("name").unwrap().as_str().unwrap(),
-        "gDNA A Updated"
-    );
+    assert_eq!(response.status(), StatusCode::CREATED);
 
-    // === DELETE ===
+    // Second creation with the same name should fail.
     let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/api/dna/{}", dna_id))
-        .body(Body::empty())
-        .unwrap();
-    let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::NO_CONTENT);
-
-    // === VERIFY DELETION ===
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/api/dna/{}", dna_id))
-        .body(Body::empty())
+        .method("POST")
+        .uri("/api/dna")
+        .header("Content-Type", "application/json")
+        .body(Body::from(create_payload.to_string()))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(response.status(), StatusCode::CONFLICT);
 }

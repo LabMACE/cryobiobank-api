@@ -16,20 +16,12 @@ pub async fn setup_clean_db() -> DatabaseConnection {
         .await
         .expect("Failed to connect to test DB");
 
-    // Clean the DB: drop and recreate the public schema.
-    let drop_query = Statement::from_string(
+    let truncate_query = Statement::from_string(
         DbBackend::Postgres,
-        "DROP SCHEMA public CASCADE;".to_owned(),
+        "TRUNCATE TABLE samples, isolates, site_replicates, dna, sites RESTART IDENTITY CASCADE;"
+            .to_owned(),
     );
-    db.execute(drop_query)
-        .await
-        .expect("Failed to drop public schema");
-    let create_query =
-        Statement::from_string(DbBackend::Postgres, "CREATE SCHEMA public;".to_owned());
-    db.execute(create_query)
-        .await
-        .expect("Failed to create public schema");
-
+    db.execute(truncate_query).await.unwrap();
     // Run migrations.
     Migrator::up(&db, None)
         .await

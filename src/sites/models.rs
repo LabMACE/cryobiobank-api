@@ -3,13 +3,16 @@ use sea_orm::{DeriveIntoActiveModel, IntoActiveModel, NotSet, Set};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
+use validator::Validate;
 
-#[derive(ToSchema, Serialize, Deserialize, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Debug, Validate)]
 pub struct Site {
     pub id: Uuid,
     pub name: String,
     pub replicates: Vec<super::replicates::models::SiteReplicate>,
+    #[validate(range(min = -180.0, max = 180.0))]
     pub longitude_4326: f64,
+    #[validate(range(min = -90.0, max = 90.0))]
     pub latitude_4326: f64,
     pub elevation_metres: f64,
 }
@@ -40,10 +43,12 @@ impl From<(Model, Vec<super::replicates::db::Model>)> for Site {
     }
 }
 
-#[derive(ToSchema, Deserialize, Serialize, DeriveIntoActiveModel)]
+#[derive(ToSchema, Deserialize, Serialize, DeriveIntoActiveModel, Validate)]
 pub struct SiteCreate {
     pub name: String,
+    #[validate(range(min = -180.0, max = 180.0))]
     pub longitude_4326: f64,
+    #[validate(range(min = -90.0, max = 90.0))]
     pub latitude_4326: f64,
     pub elevation_metres: f64,
 }
@@ -61,7 +66,7 @@ impl From<SiteCreate> for ActiveModel {
     }
 }
 
-#[derive(ToSchema, Deserialize)]
+#[derive(ToSchema, Deserialize, Validate)]
 pub struct SiteUpdate {
     #[serde(
         default,
@@ -74,12 +79,14 @@ pub struct SiteUpdate {
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
+    #[validate(range(min = -180.0, max = 180.0))]
     pub longitude_4326: Option<Option<f64>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
+    #[validate(range(min = -90.0, max = 90.0))]
     pub latitude_4326: Option<Option<f64>>,
     #[serde(
         default,

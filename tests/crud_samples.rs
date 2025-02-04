@@ -123,3 +123,87 @@ async fn crud_samples() {
     let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
+#[tokio::test]
+async fn test_samples_invalid_and_duplicate() {
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db.clone());
+
+    // Create valid parent Site and Site Replicate.
+    let create_site_payload = json!({
+        "name": "Sample_Parent_Site",
+        "latitude_4326": 46.27095,
+        "longitude_4326": 7.3349,
+        "elevation_metres": 1629
+    });
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/sites")
+        .header("Content-Type", "application/json")
+        .body(Body::from(create_site_payload.to_string()))
+        .unwrap();
+    let response = app.clone().oneshot(request).await.unwrap();
+    let site_bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+    let site: serde_json::Value = serde_json::from_slice(&site_bytes).unwrap();
+    let site_id = site.get("id").unwrap().as_str().unwrap();
+
+    let create_replicate_payload = json!({
+        "site_id": site_id,
+        "name": "Sample_Replicate",
+        "sample_type": "Snow",
+        "sampling_date": "2023-02-18"
+    });
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/site_replicates")
+        .header("Content-Type", "application/json")
+        .body(Body::from(create_replicate_payload.to_string()))
+        .unwrap();
+    let response = app.clone().oneshot(request).await.unwrap();
+    let rep_bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+    let replicate: serde_json::Value = serde_json::from_slice(&rep_bytes).unwrap();
+    let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
+
+    // Test invalid site_replicate_id (malformed UUID)
+    let invalid_uuid_payload = json!({
+        "name": "Sample_Invalid_UUID",
+        "site_replicate_id": "invalid-uuid",
+        "type_of_sample": "Snow meltwater",
+        "storage_location": "Samples: Test",
+        "description": "Test sample"
+    });
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/samples")
+        .header("Content-Type", "application/json")
+        .body(Body::from(invalid_uuid_payload.to_string()))
+        .unwrap();
+    let response = app.clone().oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    // Create a valid sample to then test duplicate name.
+    let valid_payload = json!({
+        "name": "Unique_Sample",
+        "site_replicate_id": replicate_id,
+        "type_of_sample": "Snow meltwater",
+        "storage_location": "Samples: Test",
+        "description": "Test sample"
+    });
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/samples")
+        .header("Content-Type", "application/json")
+        .body(Body::from(valid_payload.to_string()))
+        .unwrap();
+    let response = app.clone().oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    // Attempt to create a duplicate sample (same name) should fail.
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/samples")
+        .header("Content-Type", "application/json")
+        .body(Body::from(valid_payload.to_string()))
+        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}

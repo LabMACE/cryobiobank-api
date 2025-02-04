@@ -20,6 +20,7 @@ use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
 use uuid::Uuid;
+use validator::Validate;
 
 const RESOURCE_NAME: &str = "sites";
 #[derive(OpenApi)]
@@ -162,7 +163,15 @@ pub async fn create_one(
     State(db): State<DatabaseConnection>,
     Json(payload): Json<super::models::SiteCreate>,
 ) -> Result<(StatusCode, Json<super::models::Site>), (StatusCode, Json<String>)> {
-    let new_obj: super::db::ActiveModel = payload.into();
+    let new_obj: super::db::ActiveModel = match payload.validate() {
+        Ok(_) => payload.into(),
+        Err(err) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(format!("Validation error: {}", err)),
+            ))
+        }
+    };
 
     match super::db::Entity::insert(new_obj).exec(&db).await {
         Ok(insert_result) => {
@@ -199,13 +208,22 @@ pub async fn update_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
     Json(payload): Json<super::models::SiteUpdate>,
-) -> impl IntoResponse {
-    let db_obj: super::db::ActiveModel = super::db::Entity::find_by_id(id)
-        .one(&db)
-        .await
-        .unwrap()
-        .expect("Failed to find object")
-        .into();
+) -> Result<(StatusCode, Json<super::models::Site>), (StatusCode, Json<String>)> {
+    let db_obj: super::db::ActiveModel =
+        match super::db::Entity::find_by_id(id).one(&db).await.unwrap() {
+            Some(obj) => obj.into(),
+            None => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
+        };
+
+    match payload.validate() {
+        Ok(_) => (),
+        Err(err) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(format!("Validation error: {}", err)),
+            ))
+        }
+    };
 
     let updated_obj: super::db::ActiveModel = payload.merge_into_activemodel(db_obj);
     let response_obj: super::models::Site = updated_obj.update(&db).await.unwrap().into();
@@ -219,7 +237,7 @@ pub async fn update_one(
         .unwrap()
         .0;
 
-    Json(obj)
+    Ok((StatusCode::OK, Json(obj)))
 }
 
 // Deletes a single object
