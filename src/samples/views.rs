@@ -125,13 +125,19 @@ pub async fn get_one(
     Path(id): Path<Uuid>,
 ) -> Result<Json<super::models::Sample>, (StatusCode, Json<String>)> {
     let obj = match super::db::Entity::find_by_id(id).one(&db).await {
-        Ok(obj) => obj.unwrap(),
-        _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
+        Ok(Some(obj)) => obj,
+        Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
+        Err(_) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("Server error".to_string()),
+            ))
+        }
     };
 
-    let submission: super::models::Sample = obj.clone().into();
+    let obj: super::models::Sample = obj.clone().into();
 
-    Ok(Json(submission))
+    Ok(Json(obj))
 }
 
 #[utoipa::path(
@@ -224,7 +230,7 @@ pub async fn delete_one(
         return (StatusCode::NOT_FOUND, Json("Not Found".to_string()));
     }
 
-    (StatusCode::OK, Json(id.to_string()))
+    (StatusCode::NO_CONTENT, Json(id.to_string()))
 }
 
 #[utoipa::path(
@@ -254,5 +260,5 @@ pub async fn delete_many(
     }
     println!("Deleted IDs: {:?}", deleted_ids);
 
-    (StatusCode::OK, Json(deleted_ids))
+    (StatusCode::NO_CONTENT, Json(deleted_ids))
 }

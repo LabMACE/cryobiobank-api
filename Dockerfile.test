@@ -7,4 +7,4 @@ COPY Cargo.lock Cargo.toml /app/
 COPY ./migration/ /app/migration/
 COPY ./src/ /app/src/
 
-ENTRYPOINT ["cargo-watch", "-x", "test"]
+ENTRYPOINT ["cargo-watch", "-x", "test --test '*'"]

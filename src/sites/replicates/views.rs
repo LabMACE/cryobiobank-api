@@ -211,7 +211,7 @@ pub async fn delete_one(
         return (StatusCode::NOT_FOUND, Json("Not Found".to_string()));
     }
 
-    (StatusCode::OK, Json(id.to_string()))
+    (StatusCode::NO_CONTENT, Json(id.to_string()))
 }
 
 #[utoipa::path(
@@ -241,5 +241,5 @@ pub async fn delete_many(
     }
     println!("Deleted IDs: {:?}", deleted_ids);
 
-    (StatusCode::OK, Json(deleted_ids))
+    (StatusCode::NO_CONTENT, Json(deleted_ids))
 }
