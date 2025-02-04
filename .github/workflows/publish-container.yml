@@ -41,6 +41,11 @@ jobs:
       DB_PASSWORD: psql
       DB_NAME: postgres
       DB_PREFIX: postgresql
+      KEYCLOAK_URL: http://fake-url-for-tests
+      KEYCLOAK_REALM: test
+      KEYCLOAK_UI_ID: test
+      APP_NAME: cryobiobank-api-tests
+      DEPLOYMENT: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
