@@ -13,7 +13,8 @@ use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
 use sea_orm::{
-    query::*, ActiveModelTrait, DatabaseConnection, DeleteResult, EntityTrait, ModelTrait, SqlErr,
+    query::*, ActiveModelTrait, DatabaseConnection, DeleteResult, EntityTrait, Iterable,
+    ModelTrait, SqlErr,
 };
 use std::sync::Arc;
 use uuid::Uuid;
@@ -107,6 +108,12 @@ pub async fn get_all(
         .order_by(order_column, order_direction)
         .offset(offset)
         .limit(limit)
+        .select_only()
+        // Don't return photos in the get all
+        .columns(super::db::Column::iter().filter(|col| match col {
+            super::db::Column::Photo => false,
+            _ => true,
+        }))
         .all(&db)
         .await
         .unwrap();
