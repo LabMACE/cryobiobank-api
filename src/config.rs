@@ -9,6 +9,7 @@ pub struct Config {
     pub keycloak_url: String,
     pub keycloak_realm: String,
     pub deployment: String,
+    pub area_buffer_metres: f64,
 }
 
 impl Config {
@@ -33,6 +34,10 @@ impl Config {
             keycloak_realm: env::var("KEYCLOAK_REALM").expect("KEYCLOAK_REALM must be set"),
             deployment: env::var("DEPLOYMENT")
                 .expect("DEPLOYMENT must be set, this can be local, dev, stage, or prod"),
+            area_buffer_metres: env::var("AREA_BUFFER_METRES")
+                .unwrap_or_else(|_| "100".to_string())
+                .parse()
+                .expect("AREA_BUFFER_METRES must be a number"),
             db_url,
         };
 

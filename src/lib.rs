@@ -1,3 +1,4 @@
+pub mod areas;
 pub mod common;
 pub mod config;
 pub mod dna;

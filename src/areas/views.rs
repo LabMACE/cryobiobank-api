@@ -5,7 +5,7 @@ use crate::common::pagination::calculate_content_range;
 use crate::common::sort::generic_sort;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing, Json, Router,
 };
@@ -13,8 +13,8 @@ use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
 use sea_orm::{
-    query::*, ActiveModelTrait, DatabaseConnection, DeleteResult, EntityTrait, LoaderTrait,
-    ModelTrait, SqlErr,
+    query::*, ActiveModelTrait, DatabaseConnection, DbErr, DeleteResult, EntityTrait, ModelTrait,
+    SqlErr,
 };
 use std::sync::Arc;
 use utoipa::OpenApi;
@@ -22,7 +22,7 @@ use utoipa_scalar::{Scalar, Servable as ScalarServable};
 use uuid::Uuid;
 use validator::Validate;
 
-const RESOURCE_NAME: &str = "sites";
+const RESOURCE_NAME: &str = "areas";
 #[derive(OpenApi)]
 #[openapi(paths(get_all, get_one, create_one, update_one, delete_one, delete_many))]
 struct ApiDoc;
@@ -69,12 +69,13 @@ pub fn router(
 #[utoipa::path(
     get,
     path = format!("/api/{}", RESOURCE_NAME),
-    responses((status = OK, body = super::models::Site))
+    responses((status = OK, body = Vec<super::models::Area>))
 )]
+#[axum::debug_handler]
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
     State(db): State<DatabaseConnection>,
-) -> impl IntoResponse {
+) -> Result<(HeaderMap, Json<Vec<super::models::Area>>), (StatusCode, String)> {
     let (offset, limit) = parse_range(params.range.clone());
 
     let condition = apply_filters(params.filter.clone(), &[("name", super::db::Column::Name)]);
@@ -87,28 +88,27 @@ pub async fn get_all(
         ],
         super::db::Column::Id,
     );
-
+    let mut areas: Vec<super::models::Area> = Vec::new();
     let objs = super::db::Entity::find()
-        // .find_with_related(crate::sites::replicates::db::Entity)
         .filter(condition.clone())
         .order_by(order_column, order_direction)
         .offset(offset)
         .limit(limit)
         .all(&db)
         .await
-        .unwrap();
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to fetch objects".to_string(),
+            )
+        })?;
 
-    let replicates = objs
-        .load_many(crate::sites::replicates::db::Entity, &db)
-        .await
-        .unwrap();
-
-    // Map the results from the database models
-    let response_objs: Vec<super::models::Site> = objs
-        .into_iter()
-        .zip(replicates)
-        .map(|(obj, replicate)| (obj, replicate).into())
-        .collect();
+    for obj in objs {
+        let geom = super::services::get_convex_hull(&db, obj.id).await;
+        let mut obj: super::models::Area = obj.into();
+        obj.geom = geom;
+        areas.push(obj);
+    }
 
     let total_count: u64 = <super::db::Entity>::find()
         .filter(condition.clone())
@@ -120,18 +120,18 @@ pub async fn get_all(
 
     let headers = calculate_content_range(offset, limit, total_count, RESOURCE_NAME);
 
-    (headers, Json(response_objs))
+    Ok((headers, Json(areas)))
 }
 
 #[utoipa::path(
     get,
     path = format!("/api/{}/{{id}}", RESOURCE_NAME),
-    responses((status = OK, body = super::models::Site))
+    responses((status = OK, body = super::models::Area))
 )]
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
-) -> Result<Json<super::models::Site>, (StatusCode, Json<String>)> {
+) -> Result<Json<super::models::Area>, (StatusCode, Json<String>)> {
     let obj = match super::db::Entity::find_by_id(id).one(&db).await {
         Ok(Some(obj)) => obj,
         Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
@@ -143,13 +143,7 @@ pub async fn get_one(
         }
     };
 
-    let replicates = obj
-        .find_related(crate::sites::replicates::db::Entity)
-        .all(&db)
-        .await
-        .unwrap();
-
-    let obj: super::models::Site = (obj, replicates).into();
+    let obj: super::models::Area = obj.into();
 
     Ok(Json(obj))
 }
@@ -157,12 +151,12 @@ pub async fn get_one(
 #[utoipa::path(
     post,
     path = format!("/api/{}", RESOURCE_NAME),
-    responses((status = CREATED, body = super::models::Site))
+    responses((status = CREATED, body = super::models::Area))
 )]
 pub async fn create_one(
     State(db): State<DatabaseConnection>,
-    Json(payload): Json<super::models::SiteCreate>,
-) -> Result<(StatusCode, Json<super::models::Site>), (StatusCode, Json<String>)> {
+    Json(payload): Json<super::models::AreaCreate>,
+) -> Result<(StatusCode, Json<super::models::Area>), (StatusCode, Json<String>)> {
     let new_obj: super::db::ActiveModel = match payload.validate() {
         Ok(_) => payload.into(),
         Err(err) => {
@@ -175,7 +169,7 @@ pub async fn create_one(
 
     match super::db::Entity::insert(new_obj).exec(&db).await {
         Ok(insert_result) => {
-            let response_obj: super::models::Site =
+            let response_obj: super::models::Area =
                 get_one(State(db.clone()), Path(insert_result.last_insert_id))
                     .await
                     .unwrap()
@@ -202,13 +196,13 @@ pub async fn create_one(
 #[utoipa::path(
     put,
     path = format!("/api/{}/{{id}}", RESOURCE_NAME),
-    responses((status = OK, body = super::models::Site))
+    responses((status = OK, body = super::models::Area))
 )]
 pub async fn update_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
-    Json(payload): Json<super::models::SiteUpdate>,
-) -> Result<(StatusCode, Json<super::models::Site>), (StatusCode, Json<String>)> {
+    Json(payload): Json<super::models::AreaUpdate>,
+) -> Result<(StatusCode, Json<super::models::Area>), (StatusCode, Json<String>)> {
     let db_obj: super::db::ActiveModel =
         match super::db::Entity::find_by_id(id).one(&db).await.unwrap() {
             Some(obj) => obj.into(),
@@ -226,7 +220,7 @@ pub async fn update_one(
     };
 
     let updated_obj: super::db::ActiveModel = payload.merge_into_activemodel(db_obj);
-    let response_obj: super::models::Site = updated_obj.update(&db).await.unwrap().into();
+    let response_obj: super::models::Area = updated_obj.update(&db).await.unwrap().into();
 
     // Assert response is ok
     assert_eq!(response_obj.id, id);

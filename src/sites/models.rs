@@ -15,6 +15,7 @@ pub struct Site {
     #[validate(range(min = -90.0, max = 90.0))]
     pub latitude_4326: f64,
     pub elevation_metres: f64,
+    pub area_id: Option<Uuid>,
 }
 
 impl From<Model> for Site {
@@ -26,6 +27,7 @@ impl From<Model> for Site {
             longitude_4326: model.longitude_4326,
             latitude_4326: model.latitude_4326,
             elevation_metres: model.elevation_metres,
+            area_id: model.area_id,
         }
     }
 }
@@ -39,6 +41,7 @@ impl From<(Model, Vec<super::replicates::db::Model>)> for Site {
             longitude_4326: model.longitude_4326,
             latitude_4326: model.latitude_4326,
             elevation_metres: model.elevation_metres,
+            area_id: model.area_id,
         }
     }
 }
@@ -51,6 +54,7 @@ pub struct SiteCreate {
     #[validate(range(min = -90.0, max = 90.0))]
     pub latitude_4326: f64,
     pub elevation_metres: f64,
+    pub area_id: Option<Uuid>,
 }
 
 impl From<SiteCreate> for ActiveModel {
@@ -61,6 +65,7 @@ impl From<SiteCreate> for ActiveModel {
             longitude_4326: create.longitude_4326,
             latitude_4326: create.latitude_4326,
             elevation_metres: create.elevation_metres,
+            area_id: create.area_id,
         }
         .into_active_model()
     }
@@ -94,6 +99,12 @@ pub struct SiteUpdate {
         with = "::serde_with::rust::double_option"
     )]
     pub elevation_metres: Option<Option<f64>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub area_id: Option<Option<Uuid>>,
 }
 impl SiteUpdate {
     pub fn merge_into_activemodel(&self, mut model: ActiveModel) -> ActiveModel {
@@ -118,6 +129,11 @@ impl SiteUpdate {
         };
         model.elevation_metres = match self.elevation_metres {
             Some(Some(ref elevation_metres)) => Set(elevation_metres.clone()),
+            Some(_) => NotSet,
+            _ => NotSet,
+        };
+        model.area_id = match self.area_id {
+            Some(Some(ref area_id)) => Set(Some(area_id.clone())),
             Some(_) => NotSet,
             _ => NotSet,
         };
