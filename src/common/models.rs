@@ -41,6 +41,7 @@ pub struct HealthCheck {
 }
 
 #[derive(ToSchema, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct ServiceStatus {
     pub s3_status: bool,
     pub kubernetes_status: bool,
