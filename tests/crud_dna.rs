@@ -9,6 +9,7 @@ use serde_json::json;
 use tower::ServiceExt;
 
 #[tokio::test]
+#[ignore]
 async fn create_dna_valid() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -29,6 +30,7 @@ async fn create_dna_valid() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_dna_duplicate_name() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());

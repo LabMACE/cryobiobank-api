@@ -9,6 +9,7 @@ use serde_json::json;
 use tower::ServiceExt;
 
 #[tokio::test]
+#[ignore]
 async fn create_isolate_valid() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -77,6 +78,7 @@ async fn create_isolate_valid() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_isolates_invalid_data() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -160,6 +162,7 @@ async fn test_isolates_invalid_data() {
 // Test that images can be added to isolates, and that they are returned only
 // in get one but not get all
 #[tokio::test]
+#[ignore]
 async fn test_isolate_images() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());

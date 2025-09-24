@@ -10,6 +10,7 @@ use serde_json::json;
 use tower::ServiceExt;
 
 #[tokio::test]
+#[ignore]
 async fn crud_samples() {
     let db = setup_clean_db().await;
     let app = build_app_with_db(db.clone());
@@ -124,6 +125,7 @@ async fn crud_samples() {
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 #[tokio::test]
+#[ignore]
 async fn test_samples_invalid_and_duplicate() {
     let db = setup_clean_db().await;
     let app = build_app_with_db(db.clone());

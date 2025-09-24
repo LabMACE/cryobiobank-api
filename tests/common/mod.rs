@@ -7,8 +7,6 @@ use cryobiobank_api::{
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
 
-/// Connects to the test database, drops and recreates the public schema,
-/// then runs all migrations so that every test starts from a known state.
 pub async fn setup_clean_db() -> DatabaseConnection {
     let config = Config::from_env();
     let db_url = config.db_url.as_ref().expect("db_url not set");
@@ -30,7 +28,6 @@ pub async fn setup_clean_db() -> DatabaseConnection {
     db
 }
 
-/// Builds an Axum router that nests all your endpoints.
 pub fn build_app_with_db(db: DatabaseConnection) -> Router {
     Router::new()
         .route("/healthz", axum::routing::get(common_views::healthz))

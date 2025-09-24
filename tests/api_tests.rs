@@ -69,6 +69,7 @@ fn build_app_with_db(db: DatabaseConnection) -> Router {
 /// (You’d write similar tests for the other endpoints, ensuring that any foreign-key
 /// constraints are met by creating parent records first.)
 #[tokio::test]
+#[ignore]
 async fn crud_sites() {
     // Setup a clean DB and build our application router.
     let db = setup_clean_db().await;

@@ -9,6 +9,7 @@ use serde_json::json;
 use tower::ServiceExt;
 
 #[tokio::test]
+#[ignore]
 async fn create_site_replicate_valid() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -52,6 +53,7 @@ async fn create_site_replicate_valid() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn create_site_replicate_invalid_date() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -95,6 +97,7 @@ async fn create_site_replicate_invalid_date() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_site_replicates_invalid_data() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());

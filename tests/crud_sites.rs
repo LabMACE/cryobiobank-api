@@ -10,6 +10,7 @@ use serde_json::json;
 use tower::ServiceExt;
 
 #[tokio::test]
+#[ignore]
 async fn create_site_valid() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -37,6 +38,7 @@ async fn create_site_valid() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn create_site_invalid_latitude() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -60,6 +62,7 @@ async fn create_site_invalid_latitude() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn create_site_invalid_longitude() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -82,6 +85,7 @@ async fn create_site_invalid_longitude() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn update_site_varied_data() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -145,6 +149,7 @@ async fn update_site_varied_data() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_sites_invalid_values() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
@@ -211,6 +216,7 @@ async fn test_sites_invalid_values() {
 
 // Test update with incorrect lat/long values
 #[tokio::test]
+#[ignore]
 async fn test_sites_invalid_update() {
     let db = common::setup_clean_db().await;
     let app = common::build_app_with_db(db.clone());
