@@ -135,28 +135,28 @@ impl SiteUpdate {
         };
 
         model.longitude_4326 = match self.longitude_4326 {
-            Some(Some(ref longitude_4326)) => Set(longitude_4326.clone()),
+            Some(Some(ref longitude_4326)) => Set(*longitude_4326),
             Some(_) => NotSet,
             _ => NotSet,
         };
         model.latitude_4326 = match self.latitude_4326 {
-            Some(Some(ref latitude_4326)) => Set(latitude_4326.clone()),
+            Some(Some(ref latitude_4326)) => Set(*latitude_4326),
             Some(_) => NotSet,
             _ => NotSet,
         };
         model.elevation_metres = match self.elevation_metres {
-            Some(Some(ref elevation_metres)) => Set(elevation_metres.clone()),
+            Some(Some(ref elevation_metres)) => Set(*elevation_metres),
             Some(_) => NotSet,
             _ => NotSet,
         };
         model.area_id = match self.area_id {
-            Some(Some(ref area_id)) => Set(Some(area_id.clone())),
+            Some(Some(ref area_id)) => Set(Some(*area_id)),
             Some(_) => NotSet,
             _ => NotSet,
         };
-        
+
         model.is_private = match self.is_private {
-            Some(Some(ref is_private)) => Set(is_private.clone()),
+            Some(Some(ref is_private)) => Set(*is_private),
             Some(_) => NotSet,
             _ => NotSet,
         };

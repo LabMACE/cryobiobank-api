@@ -1,7 +1,6 @@
 use crate::common::auth::Role;
 use crate::common::filter::{apply_filters, parse_range};
 use crate::common::models::FilterOptions;
-use crate::common::optional_auth::OptionalAuth;
 use crate::common::pagination::calculate_content_range;
 use crate::common::sort::generic_sort;
 use axum::{
@@ -28,7 +27,10 @@ pub fn router(
 ) -> Router {
     let mut admin_router = Router::new()
         .route("/", routing::get(get_all).post(create_one))
-        .route("/{id}", routing::get(get_one).put(update_one).delete(delete_one))
+        .route(
+            "/{id}",
+            routing::get(get_one).put(update_one).delete(delete_one),
+        )
         .route("/batch", routing::delete(delete_many))
         .with_state(db.clone());
 
@@ -75,7 +77,6 @@ pub async fn get_all(
             ("storage_location", super::db::Column::StorageLocation),
         ],
     );
-
 
     let (order_column, order_direction) = generic_sort(
         params.sort.clone(),
@@ -135,15 +136,8 @@ pub async fn get_all(
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
-    req: Request,
 ) -> Result<Json<super::models::Isolate>, (StatusCode, Json<String>)> {
-    let auth = OptionalAuth::from_headers(req.headers());
-    let mut query = super::db::Entity::find_by_id(id);
-
-    // Filter private records for unauthenticated users
-    if !auth.is_authenticated {
-        query = query.filter(super::db::Column::IsPrivate.eq(false));
-    }
+    let query = super::db::Entity::find_by_id(id);
 
     let obj = match query.one(&db).await {
         Ok(Some(obj)) => obj,
