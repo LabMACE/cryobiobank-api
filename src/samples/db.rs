@@ -1,21 +1,36 @@
+use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, ToSchema)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, EntityToModels)]
 #[sea_orm(table_name = "samples")]
+#[crudcrate(
+    generate_router,
+    api_struct = "Sample",
+    name_singular = "sample",
+    name_plural = "samples",
+    description = "Sample collection records from site replicates with associated DNA"
+)]
 pub struct Model {
     #[sea_orm(primary_key)]
+    #[crudcrate(primary_key, exclude(update, create), on_create = Uuid::new_v4())]
     pub id: Uuid,
+    #[crudcrate(sortable, filterable)]
     pub site_replicate_id: Uuid,
+    #[crudcrate(sortable, filterable)]
     pub dna_id: Option<Uuid>,
 
     #[sea_orm(unique)]
+    #[crudcrate(sortable, filterable, fulltext)]
     pub name: String,
 
+    #[crudcrate(sortable, filterable, fulltext)]
     pub type_of_sample: Option<String>,
+    #[crudcrate(sortable, filterable, fulltext)]
     pub storage_location: Option<String>,
+    #[crudcrate(sortable, filterable, fulltext)]
     pub description: Option<String>,
+    #[crudcrate(filterable)]
     pub is_private: bool,
 }
 

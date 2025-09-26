@@ -1,8 +1,8 @@
 use axum::Router;
 use cryobiobank_api::{
-    common::views as common_views, config::Config, dna::views as dna_views,
-    isolates::views as iso_views, samples::views as samp_views,
-    sites::replicates::views as sr_views, sites::views as sites_views,
+    common::views as common_views, config::Config, dna::db::DNA as dna_views,
+    isolates::db::Isolate as iso_views, samples::db::Sample as samp_views,
+    sites::db::Site as sites_views, sites::replicates::db::SiteReplicate as sr_views,
 };
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
@@ -36,9 +36,12 @@ pub fn build_app_with_db(db: DatabaseConnection) -> Router {
             axum::routing::get(common_views::get_ui_config),
         )
         .with_state(db.clone())
-        .nest("/api/sites", sites_views::router(db.clone(), None))
-        .nest("/api/site_replicates", sr_views::router(db.clone(), None))
-        .nest("/api/dna", dna_views::router(db.clone(), None))
-        .nest("/api/isolates", iso_views::router(db.clone(), None))
-        .nest("/api/samples", samp_views::router(db.clone(), None))
+        .nest("/api/sites", sites_views::router(&db).split_for_parts().0)
+        .nest(
+            "/api/site_replicates",
+            sr_views::router(&db).split_for_parts().0,
+        )
+        .nest("/api/dna", dna_views::router(&db).split_for_parts().0)
+        .nest("/api/isolates", iso_views::router(&db).split_for_parts().0)
+        .nest("/api/samples", samp_views::router(&db).split_for_parts().0)
 }

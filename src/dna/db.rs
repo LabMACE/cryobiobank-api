@@ -1,16 +1,29 @@
+use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, ToSchema)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, EntityToModels)]
 #[sea_orm(table_name = "dna")]
+#[crudcrate(
+    generate_router,
+    api_struct = "DNA",
+    name_singular = "dna",
+    name_plural = "dna",
+    description = "DNA extraction and analysis records for biological samples",
+    no_eq
+)]
 pub struct Model {
     #[sea_orm(primary_key)]
+    #[crudcrate(primary_key, exclude(update, create), on_create = Uuid::new_v4())]
     pub id: Uuid,
     #[sea_orm(unique)]
+    #[crudcrate(sortable, filterable, fulltext)]
     pub name: String,
+    #[crudcrate(sortable, filterable, fulltext)]
     pub description: Option<String>,
+    #[crudcrate(sortable, filterable, fulltext)]
     pub extraction_method: Option<String>,
+    #[crudcrate(filterable)]
     pub is_private: bool,
 }
 

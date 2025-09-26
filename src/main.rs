@@ -55,52 +55,81 @@ async fn main() {
         // Admin API routes - Keycloak protected, full access to all records
         .nest(
             "/api/admin/sites",
-            sites::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+            sites::db::Site::router(&db.clone())
+                .layer(
+                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
+                        .instance(keycloak_auth_instance.clone())
+                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
+                        .persist_raw_claims(false)
+                        .expected_audiences(vec![String::from("account")])
+                        .required_roles(vec![common::auth::Role::Administrator])
+                        .build(),
+                ).into(),
         )
         .nest(
             "/api/admin/site_replicates",
-            sites::replicates::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+            sites::replicates::db::SiteReplicate::router(&db.clone())
+                .layer(
+                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
+                        .instance(keycloak_auth_instance.clone())
+                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
+                        .persist_raw_claims(false)
+                        .expected_audiences(vec![String::from("account")])
+                        .required_roles(vec![common::auth::Role::Administrator])
+                        .build(),
+                ).into(),
         )
         .nest(
             "/api/admin/samples",
-            samples::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+            samples::db::Sample::router(&db.clone())
+                .layer(
+                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
+                        .instance(keycloak_auth_instance.clone())
+                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
+                        .persist_raw_claims(false)
+                        .expected_audiences(vec![String::from("account")])
+                        .required_roles(vec![common::auth::Role::Administrator])
+                        .build(),
+                ).into(),
         )
         .nest(
             "/api/admin/isolates",
-            isolates::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+            isolates::db::Isolate::router(&db.clone())
+                .layer(
+                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
+                        .instance(keycloak_auth_instance.clone())
+                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
+                        .persist_raw_claims(false)
+                        .expected_audiences(vec![String::from("account")])
+                        .required_roles(vec![common::auth::Role::Administrator])
+                        .build(),
+                ).into(),
         )
         .nest(
             "/api/admin/dna",
-            dna::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+            dna::db::DNA::router(&db.clone())
+                .layer(
+                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
+                        .instance(keycloak_auth_instance.clone())
+                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
+                        .persist_raw_claims(false)
+                        .expected_audiences(vec![String::from("account")])
+                        .required_roles(vec![common::auth::Role::Administrator])
+                        .build(),
+                ).into(),
         )
         .nest(
             "/api/admin/areas",
-            areas::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
-        )
-        // Legacy routes for backward compatibility - will be deprecated
-        .nest(
-            "/api/sites",
-            sites::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
-        )
-        .nest(
-            "/api/site_replicates",
-            sites::replicates::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
-        )
-        .nest(
-            "/api/samples",
-            samples::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
-        )
-        .nest(
-            "/api/isolates",
-            isolates::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
-        )
-        .nest(
-            "/api/dna",
-            dna::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
-        )
-        .nest(
-            "/api/areas",
-            areas::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+            areas::db::Area::router(&db.clone())
+                .layer(
+                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
+                        .instance(keycloak_auth_instance.clone())
+                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
+                        .persist_raw_claims(false)
+                        .expected_audiences(vec![String::from("account")])
+                        .required_roles(vec![common::auth::Role::Administrator])
+                        .build(),
+                ).into(),
         )
         // .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))

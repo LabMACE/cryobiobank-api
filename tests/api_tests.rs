@@ -5,11 +5,7 @@ use axum::{
     http::{Request, StatusCode},
     Router,
 };
-use cryobiobank_api::{
-    common::views as common_views,
-    config::Config,
-    sites::{models::Site, views},
-};
+use cryobiobank_api::{common::views as common_views, config::Config, sites::db::Site};
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
 use serde_json::json;
@@ -57,7 +53,7 @@ fn build_app_with_db(db: DatabaseConnection) -> Router {
             axum::routing::get(common_views::get_ui_config),
         )
         .with_state(db.clone())
-        .nest("/api/sites", views::router(db.clone(), None))
+        .nest("/api/sites", Site::router(&db).split_for_parts().0)
     // Extend here with additional endpoints, for example:
     // .nest("/api/site_replicates", site_replicates_router(db.clone(), None))
     // .nest("/api/dna", dna_router(db.clone(), None))

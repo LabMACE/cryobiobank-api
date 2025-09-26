@@ -5,7 +5,7 @@ use axum::{
     body::{to_bytes, Body},
     http::{Request, StatusCode},
 };
-use cryobiobank_api::sites::models::Site;
+use cryobiobank_api::sites::db::Site;
 use serde_json::json;
 use tower::ServiceExt;
 
