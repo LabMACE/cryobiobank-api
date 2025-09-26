@@ -13,6 +13,7 @@ pub struct Area {
     pub description: Option<String>,
     pub colour: Option<String>,
     pub geom: Option<serde_json::Value>,
+    pub is_private: bool,
 }
 
 impl From<Model> for Area {
@@ -23,6 +24,7 @@ impl From<Model> for Area {
             description: model.description,
             colour: Some(model.colour),
             geom: None,
+            is_private: model.is_private,
         }
     }
 }
@@ -32,6 +34,8 @@ pub struct AreaCreate {
     pub name: String,
     pub description: Option<String>,
     pub colour: Option<String>,
+    #[serde(default)]
+    pub is_private: bool,
 }
 
 impl From<AreaCreate> for ActiveModel {
@@ -46,6 +50,7 @@ impl From<AreaCreate> for ActiveModel {
             name: create.name,
             description: create.description,
             colour,
+            is_private: create.is_private,
         }
         .into_active_model()
     }
@@ -71,6 +76,12 @@ pub struct AreaUpdate {
         with = "::serde_with::rust::double_option"
     )]
     pub colour: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub is_private: Option<Option<bool>>,
 }
 
 impl AreaUpdate {
@@ -89,6 +100,11 @@ impl AreaUpdate {
             Some(Some(ref colour)) => Set(colour.clone()),
             Some(_) => NotSet,
             None => NotSet,
+        };
+        model.is_private = match self.is_private {
+            Some(Some(ref is_private)) => Set(*is_private),
+            Some(_) => NotSet,
+            _ => NotSet,
         };
         model
     }

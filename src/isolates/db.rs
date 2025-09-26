@@ -19,6 +19,7 @@ pub struct Model {
     pub storage_location: Option<String>,
 
     pub dna_id: Option<Uuid>,
+    pub is_private: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

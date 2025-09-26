@@ -46,6 +46,7 @@ pub struct Model {
     pub organic_acids_butyrate: Option<f64>,
     pub organic_acids_oxalate: Option<f64>,
     pub organic_acids_acetate: Option<f64>,
+    pub is_private: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

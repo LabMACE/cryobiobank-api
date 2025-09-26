@@ -16,10 +16,12 @@ pub struct Site {
     pub latitude_4326: f64,
     pub elevation_metres: f64,
     pub area_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_private: Option<bool>,
 }
 
-impl From<Model> for Site {
-    fn from(model: Model) -> Self {
+impl Site {
+    pub fn from_model(model: Model, include_private_field: bool) -> Self {
         Self {
             id: model.id,
             name: model.name,
@@ -28,21 +30,27 @@ impl From<Model> for Site {
             latitude_4326: model.latitude_4326,
             elevation_metres: model.elevation_metres,
             area_id: model.area_id,
+            is_private: if include_private_field {
+                Some(model.is_private)
+            } else {
+                None
+            },
         }
+    }
+}
+
+impl From<Model> for Site {
+    fn from(model: Model) -> Self {
+        // Default behavior includes private field for backward compatibility
+        Self::from_model(model, true)
     }
 }
 
 impl From<(Model, Vec<super::replicates::db::Model>)> for Site {
     fn from((model, replicates): (Model, Vec<super::replicates::db::Model>)) -> Self {
-        Self {
-            id: model.id,
-            name: model.name,
-            replicates: replicates.into_iter().map(|r| r.into()).collect(),
-            longitude_4326: model.longitude_4326,
-            latitude_4326: model.latitude_4326,
-            elevation_metres: model.elevation_metres,
-            area_id: model.area_id,
-        }
+        let mut site = Self::from_model(model, true);
+        site.replicates = replicates.into_iter().map(|r| r.into()).collect();
+        site
     }
 }
 
@@ -55,6 +63,8 @@ pub struct SiteCreate {
     pub latitude_4326: f64,
     pub elevation_metres: f64,
     pub area_id: Option<Uuid>,
+    #[serde(default)]
+    pub is_private: bool,
 }
 
 impl From<SiteCreate> for ActiveModel {
@@ -66,6 +76,7 @@ impl From<SiteCreate> for ActiveModel {
             latitude_4326: create.latitude_4326,
             elevation_metres: create.elevation_metres,
             area_id: create.area_id,
+            is_private: create.is_private,
         }
         .into_active_model()
     }
@@ -105,6 +116,12 @@ pub struct SiteUpdate {
         with = "::serde_with::rust::double_option"
     )]
     pub area_id: Option<Option<Uuid>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub is_private: Option<Option<bool>>,
 }
 impl SiteUpdate {
     pub fn merge_into_activemodel(&self, mut model: ActiveModel) -> ActiveModel {
@@ -134,6 +151,12 @@ impl SiteUpdate {
         };
         model.area_id = match self.area_id {
             Some(Some(ref area_id)) => Set(Some(area_id.clone())),
+            Some(_) => NotSet,
+            _ => NotSet,
+        };
+        
+        model.is_private = match self.is_private {
+            Some(Some(ref is_private)) => Set(is_private.clone()),
             Some(_) => NotSet,
             _ => NotSet,
         };

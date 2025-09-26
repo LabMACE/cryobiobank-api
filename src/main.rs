@@ -3,6 +3,7 @@ mod common;
 mod config;
 mod dna;
 mod isolates;
+mod public;
 mod samples;
 mod sites;
 
@@ -49,6 +50,34 @@ async fn main() {
         .route("/healthz", get(common::views::healthz))
         .route("/api/config", get(common::views::get_ui_config))
         .with_state(db.clone())
+        // Public API routes - no authentication required, only non-private records
+        .nest("/api/public", public::router(db.clone()))
+        // Admin API routes - Keycloak protected, full access to all records
+        .nest(
+            "/api/admin/sites",
+            sites::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+        )
+        .nest(
+            "/api/admin/site_replicates",
+            sites::replicates::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+        )
+        .nest(
+            "/api/admin/samples",
+            samples::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+        )
+        .nest(
+            "/api/admin/isolates",
+            isolates::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+        )
+        .nest(
+            "/api/admin/dna",
+            dna::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+        )
+        .nest(
+            "/api/admin/areas",
+            areas::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
+        )
+        // Legacy routes for backward compatibility - will be deprecated
         .nest(
             "/api/sites",
             sites::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
@@ -72,7 +101,6 @@ async fn main() {
         .nest(
             "/api/areas",
             areas::views::router(db.clone(), Some(keycloak_auth_instance.clone())),
-            
         )
         // .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))

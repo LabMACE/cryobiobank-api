@@ -56,6 +56,7 @@ impl From<IsolateCreate> for ActiveModel {
             media_used_for_isolation: create.media_used_for_isolation,
             storage_location: create.storage_location,
             dna_id: create.dna_id,
+            is_private: false,
         }
         .into_active_model()
     }

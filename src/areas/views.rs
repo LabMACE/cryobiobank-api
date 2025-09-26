@@ -12,7 +12,7 @@ use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
 use sea_orm::{
-    query::*, ActiveModelTrait, DatabaseConnection, DeleteResult, EntityTrait, ModelTrait, SqlErr,
+    query::*, ActiveModelTrait, ColumnTrait, DatabaseConnection, DeleteResult, EntityTrait, ModelTrait, SqlErr,
 };
 use std::sync::Arc;
 use utoipa::OpenApi;
@@ -29,14 +29,14 @@ pub fn router(
     db: DatabaseConnection,
     keycloak_auth_instance: Option<Arc<KeycloakAuthInstance>>,
 ) -> Router {
-    let mut mutating_router = Router::new()
-        .route("/", routing::post(create_one))
-        .route("/{id}", routing::put(update_one).delete(delete_one))
+    let mut admin_router = Router::new()
+        .route("/", routing::get(get_all).post(create_one))
+        .route("/{id}", routing::get(get_one).put(update_one).delete(delete_one))
         .route("/batch", routing::delete(delete_many))
         .with_state(db.clone());
 
     if let Some(instance) = keycloak_auth_instance {
-        mutating_router = mutating_router.layer(
+        admin_router = admin_router.layer(
             KeycloakAuthLayer::<Role>::builder()
                 .instance(instance)
                 .passthrough_mode(PassthroughMode::Block)
@@ -47,21 +47,12 @@ pub fn router(
         );
     } else {
         println!(
-            "Warning: Mutating routes of '{}' router are not protected",
+            "Warning: Admin routes of '{}' router are not protected",
             RESOURCE_NAME
         );
     }
 
-    // All the routes that do not mutate the database.
-    let router = Router::new()
-        // let router = router
-        .route("/", routing::get(get_all))
-        .route("/{id}", routing::get(get_one))
-        .with_state(db.clone())
-        .merge(mutating_router)
-        .merge(Scalar::with_url("/docs", ApiDoc::openapi()));
-
-    router
+    admin_router.merge(Scalar::with_url("/docs", ApiDoc::openapi()))
 }
 
 #[utoipa::path(
@@ -167,11 +158,16 @@ pub async fn create_one(
 
     match super::db::Entity::insert(new_obj).exec(&db).await {
         Ok(insert_result) => {
-            let response_obj: super::models::Area =
-                get_one(State(db.clone()), Path(insert_result.last_insert_id))
-                    .await
-                    .unwrap()
-                    .0;
+            // Internal call from admin-protected endpoint - fetch with admin privileges
+            let response_obj = match super::db::Entity::find_by_id(insert_result.last_insert_id).one(&db).await {
+                Ok(Some(obj)) => super::models::Area::from(obj),
+                Ok(None) => {
+                    return Err((StatusCode::NOT_FOUND, Json("Created object not found".to_string())))
+                }
+                Err(_) => {
+                    return Err((StatusCode::INTERNAL_SERVER_ERROR, Json("Database error".to_string())))
+                }
+            };
 
             Ok((StatusCode::CREATED, Json(response_obj)))
         }
@@ -223,11 +219,16 @@ pub async fn update_one(
     // Assert response is ok
     assert_eq!(response_obj.id, id);
 
-    // Return the new object
-    let obj = get_one(State(db.clone()), Path(id.clone()))
-        .await
-        .unwrap()
-        .0;
+    // Return the updated object - admin context since this is from admin-protected endpoint  
+    let obj = match super::db::Entity::find_by_id(id).one(&db).await {
+        Ok(Some(obj)) => super::models::Area::from(obj),
+        Ok(None) => {
+            return Err((StatusCode::NOT_FOUND, Json("Updated object not found".to_string())))
+        }
+        Err(_) => {
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, Json("Database error".to_string())))
+        }
+    };
 
     Ok((StatusCode::OK, Json(obj)))
 }

@@ -157,6 +157,7 @@ impl From<SiteReplicateCreate> for ActiveModel {
             organic_acids_butyrate: create.organic_acids_butyrate,
             organic_acids_oxalate: create.organic_acids_oxalate,
             organic_acids_acetate: create.organic_acids_acetate,
+            is_private: false,
         }
         .into_active_model()
     }

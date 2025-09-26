@@ -37,6 +37,7 @@ impl From<DNACreate> for ActiveModel {
             name: create.name,
             description: create.description,
             extraction_method: create.extraction_method,
+            is_private: false,
         }
         .into_active_model()
     }

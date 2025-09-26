@@ -11,6 +11,7 @@ pub struct Model {
     pub name: String,
     pub description: Option<String>,
     pub extraction_method: Option<String>,
+    pub is_private: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

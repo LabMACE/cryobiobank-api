@@ -16,6 +16,7 @@ pub struct Model {
     pub type_of_sample: Option<String>,
     pub storage_location: Option<String>,
     pub description: Option<String>,
+    pub is_private: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

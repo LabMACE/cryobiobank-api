@@ -1,10 +1,11 @@
 use crate::common::auth::Role;
 use crate::common::filter::{apply_filters, parse_range};
 use crate::common::models::FilterOptions;
+use crate::common::optional_auth::OptionalAuth;
 use crate::common::pagination::calculate_content_range;
 use crate::common::sort::generic_sort;
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query, Request, State},
     http::StatusCode,
     response::IntoResponse,
     routing, Json, Router,
@@ -13,7 +14,7 @@ use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
 use sea_orm::{
-    query::*, ActiveModelTrait, DatabaseConnection, DeleteResult, EntityTrait, Iterable,
+    query::*, ActiveModelTrait, ColumnTrait, DatabaseConnection, DeleteResult, EntityTrait, Iterable,
     ModelTrait, SqlErr,
 };
 use std::sync::Arc;
@@ -66,10 +67,12 @@ pub fn router(
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
     State(db): State<DatabaseConnection>,
+    req: Request,
 ) -> impl IntoResponse {
+    let auth = OptionalAuth::from_headers(req.headers());
     let (offset, limit) = parse_range(params.range.clone());
 
-    let condition = apply_filters(
+    let mut condition = apply_filters(
         params.filter.clone(),
         &[
             ("name", super::db::Column::Name),
@@ -81,6 +84,11 @@ pub async fn get_all(
             ("storage_location", super::db::Column::StorageLocation),
         ],
     );
+    
+    // Filter private records for unauthenticated users
+    if !auth.is_authenticated {
+        condition = condition.add(super::db::Column::IsPrivate.eq(false));
+    }
 
     let (order_column, order_direction) = generic_sort(
         params.sort.clone(),
@@ -140,8 +148,17 @@ pub async fn get_all(
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
+    req: Request,
 ) -> Result<Json<super::models::Isolate>, (StatusCode, Json<String>)> {
-    let obj = match super::db::Entity::find_by_id(id).one(&db).await {
+    let auth = OptionalAuth::from_headers(req.headers());
+    let mut query = super::db::Entity::find_by_id(id);
+    
+    // Filter private records for unauthenticated users
+    if !auth.is_authenticated {
+        query = query.filter(super::db::Column::IsPrivate.eq(false));
+    }
+    
+    let obj = match query.one(&db).await {
         Ok(Some(obj)) => obj,
         Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
         Err(_) => {
@@ -170,11 +187,16 @@ pub async fn create_one(
 
     match super::db::Entity::insert(new_obj).exec(&db).await {
         Ok(insert_result) => {
-            let response_obj: super::models::Isolate =
-                get_one(State(db.clone()), Path(insert_result.last_insert_id))
-                    .await
-                    .unwrap()
-                    .0;
+            // Internal call from admin-protected endpoint - fetch with admin privileges
+            let response_obj = match super::db::Entity::find_by_id(insert_result.last_insert_id).one(&db).await {
+                Ok(Some(obj)) => super::models::Isolate::from(obj),
+                Ok(None) => {
+                    return Err((StatusCode::NOT_FOUND, Json("Created object not found".to_string())))
+                }
+                Err(_) => {
+                    return Err((StatusCode::INTERNAL_SERVER_ERROR, Json("Database error".to_string())))
+                }
+            };
 
             Ok((StatusCode::CREATED, Json(response_obj)))
         }
@@ -217,13 +239,18 @@ pub async fn update_one(
     // Assert response is ok
     assert_eq!(response_obj.id, id);
 
-    // Return the new object
-    let obj = get_one(State(db.clone()), Path(id.clone()))
-        .await
-        .unwrap()
-        .0;
+    // Return the updated object - admin context since this is from admin-protected endpoint
+    let obj = match super::db::Entity::find_by_id(id).one(&db).await {
+        Ok(Some(obj)) => super::models::Isolate::from(obj),
+        Ok(None) => {
+            return Err((StatusCode::NOT_FOUND, Json("Updated object not found".to_string())))
+        }
+        Err(_) => {
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, Json("Database error".to_string())))
+        }
+    };
 
-    Json(obj)
+    Ok(Json(obj))
 }
 
 #[utoipa::path(

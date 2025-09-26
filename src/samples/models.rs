@@ -49,6 +49,7 @@ impl From<SampleCreate> for ActiveModel {
             storage_location: create.storage_location,
             description: create.description,
             dna_id: create.dna_id,
+            is_private: false,
         }
         .into_active_model()
     }

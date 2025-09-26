@@ -13,6 +13,7 @@ pub struct Model {
     pub longitude_4326: f64,
     pub elevation_metres: f64,
     pub area_id: Option<Uuid>,
+    pub is_private: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
