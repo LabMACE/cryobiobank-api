@@ -12,7 +12,7 @@ use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
 use sea_orm::{
-    query::*, ActiveModelTrait, ColumnTrait, DatabaseConnection, DeleteResult, EntityTrait, ModelTrait, SqlErr,
+    query::*, ActiveModelTrait, DatabaseConnection, DeleteResult, EntityTrait, ModelTrait, SqlErr,
 };
 use std::sync::Arc;
 use utoipa::OpenApi;
@@ -31,7 +31,10 @@ pub fn router(
 ) -> Router {
     let mut admin_router = Router::new()
         .route("/", routing::get(get_all).post(create_one))
-        .route("/{id}", routing::get(get_one).put(update_one).delete(delete_one))
+        .route(
+            "/{id}",
+            routing::get(get_one).put(update_one).delete(delete_one),
+        )
         .route("/batch", routing::delete(delete_many))
         .with_state(db.clone());
 
@@ -159,13 +162,22 @@ pub async fn create_one(
     match super::db::Entity::insert(new_obj).exec(&db).await {
         Ok(insert_result) => {
             // Internal call from admin-protected endpoint - fetch with admin privileges
-            let response_obj = match super::db::Entity::find_by_id(insert_result.last_insert_id).one(&db).await {
+            let response_obj = match super::db::Entity::find_by_id(insert_result.last_insert_id)
+                .one(&db)
+                .await
+            {
                 Ok(Some(obj)) => super::models::Area::from(obj),
                 Ok(None) => {
-                    return Err((StatusCode::NOT_FOUND, Json("Created object not found".to_string())))
+                    return Err((
+                        StatusCode::NOT_FOUND,
+                        Json("Created object not found".to_string()),
+                    ))
                 }
                 Err(_) => {
-                    return Err((StatusCode::INTERNAL_SERVER_ERROR, Json("Database error".to_string())))
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json("Database error".to_string()),
+                    ))
                 }
             };
 
@@ -219,14 +231,20 @@ pub async fn update_one(
     // Assert response is ok
     assert_eq!(response_obj.id, id);
 
-    // Return the updated object - admin context since this is from admin-protected endpoint  
+    // Return the updated object - admin context since this is from admin-protected endpoint
     let obj = match super::db::Entity::find_by_id(id).one(&db).await {
         Ok(Some(obj)) => super::models::Area::from(obj),
         Ok(None) => {
-            return Err((StatusCode::NOT_FOUND, Json("Updated object not found".to_string())))
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json("Updated object not found".to_string()),
+            ))
         }
         Err(_) => {
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, Json("Database error".to_string())))
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("Database error".to_string()),
+            ))
         }
     };
 
@@ -247,7 +265,7 @@ pub async fn delete_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
 ) -> Result<(StatusCode, Json<Uuid>), (StatusCode, Json<String>)> {
-    let obj = match super::db::Entity::find_by_id(id.clone()).one(&db).await {
+    let obj = match super::db::Entity::find_by_id(id).one(&db).await {
         Ok(Some(obj)) => obj,
         Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
         _ => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
@@ -281,7 +299,7 @@ pub async fn delete_many(
 ) -> Result<(StatusCode, Json<Vec<Uuid>>), (StatusCode, Json<String>)> {
     let mut deleted_ids = Vec::new();
     for id in ids {
-        let obj = match super::db::Entity::find_by_id(id.clone()).one(&db).await {
+        let obj = match super::db::Entity::find_by_id(id).one(&db).await {
             Ok(Some(obj)) => obj,
             Ok(None) => continue,
             Err(_) => {

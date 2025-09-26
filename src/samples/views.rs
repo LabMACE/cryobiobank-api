@@ -24,14 +24,14 @@ pub fn router(
     db: DatabaseConnection,
     keycloak_auth_instance: Option<Arc<KeycloakAuthInstance>>,
 ) -> Router {
-    let mut mutating_router = Router::new()
-        .route("/", routing::post(create_one))
-        .route("/{id}", routing::put(update_one).delete(delete_one))
+    let mut admin_router = Router::new()
+        .route("/", routing::get(get_all).post(create_one))
+        .route("/{id}", routing::get(get_one).put(update_one).delete(delete_one))
         .route("/batch", routing::delete(delete_many))
         .with_state(db.clone());
 
     if let Some(instance) = keycloak_auth_instance {
-        mutating_router = mutating_router.layer(
+        admin_router = admin_router.layer(
             KeycloakAuthLayer::<Role>::builder()
                 .instance(instance)
                 .passthrough_mode(PassthroughMode::Block)
@@ -42,19 +42,12 @@ pub fn router(
         );
     } else {
         println!(
-            "Warning: Mutating routes of '{}' router are not protected",
+            "Warning: Admin routes of '{}' router are not protected",
             RESOURCE_NAME
         );
     }
 
-    // All the routes that do not mutate the database.
-    let router = Router::new()
-        .route("/", routing::get(get_all))
-        .route("/{id}", routing::get(get_one))
-        .with_state(db.clone())
-        .merge(mutating_router);
-
-    router
+    admin_router
 }
 
 #[utoipa::path(

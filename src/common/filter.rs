@@ -60,7 +60,7 @@ pub fn apply_filters(
 pub fn parse_range(range_str: Option<String>) -> (u64, u64) {
     if let Some(range) = range_str {
         let range_vec: Vec<u64> = serde_json::from_str(&range).unwrap_or(vec![0, 24]);
-        let start = range_vec.get(0).copied().unwrap_or(0);
+        let start = range_vec.first().copied().unwrap_or(0);
         let end = range_vec.get(1).copied().unwrap_or(24);
         let limit = end - start + 1;
         (start, limit)

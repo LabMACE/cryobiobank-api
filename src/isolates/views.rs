@@ -14,8 +14,8 @@ use axum_keycloak_auth::{
     instance::KeycloakAuthInstance, layer::KeycloakAuthLayer, PassthroughMode,
 };
 use sea_orm::{
-    query::*, ActiveModelTrait, ColumnTrait, DatabaseConnection, DeleteResult, EntityTrait, Iterable,
-    ModelTrait, SqlErr,
+    query::*, ActiveModelTrait, ColumnTrait, DatabaseConnection, DeleteResult, EntityTrait,
+    Iterable, ModelTrait, SqlErr,
 };
 use std::sync::Arc;
 use uuid::Uuid;
@@ -26,14 +26,14 @@ pub fn router(
     db: DatabaseConnection,
     keycloak_auth_instance: Option<Arc<KeycloakAuthInstance>>,
 ) -> Router {
-    let mut mutating_router = Router::new()
-        .route("/", routing::post(create_one))
-        .route("/{id}", routing::put(update_one).delete(delete_one))
+    let mut admin_router = Router::new()
+        .route("/", routing::get(get_all).post(create_one))
+        .route("/{id}", routing::get(get_one).put(update_one).delete(delete_one))
         .route("/batch", routing::delete(delete_many))
         .with_state(db.clone());
 
     if let Some(instance) = keycloak_auth_instance {
-        mutating_router = mutating_router.layer(
+        admin_router = admin_router.layer(
             KeycloakAuthLayer::<Role>::builder()
                 .instance(instance)
                 .passthrough_mode(PassthroughMode::Block)
@@ -44,19 +44,12 @@ pub fn router(
         );
     } else {
         println!(
-            "Warning: Mutating routes of '{}' router are not protected",
+            "Warning: Admin routes of '{}' router are not protected",
             RESOURCE_NAME
         );
     }
 
-    // All the routes that do not mutate the database.
-    let router = Router::new()
-        .route("/", routing::get(get_all))
-        .route("/{id}", routing::get(get_one))
-        .with_state(db.clone())
-        .merge(mutating_router);
-
-    router
+    admin_router
 }
 
 #[utoipa::path(
@@ -67,12 +60,10 @@ pub fn router(
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
     State(db): State<DatabaseConnection>,
-    req: Request,
 ) -> impl IntoResponse {
-    let auth = OptionalAuth::from_headers(req.headers());
     let (offset, limit) = parse_range(params.range.clone());
 
-    let mut condition = apply_filters(
+    let condition = apply_filters(
         params.filter.clone(),
         &[
             ("name", super::db::Column::Name),
@@ -84,11 +75,7 @@ pub async fn get_all(
             ("storage_location", super::db::Column::StorageLocation),
         ],
     );
-    
-    // Filter private records for unauthenticated users
-    if !auth.is_authenticated {
-        condition = condition.add(super::db::Column::IsPrivate.eq(false));
-    }
+
 
     let (order_column, order_direction) = generic_sort(
         params.sort.clone(),
@@ -152,12 +139,12 @@ pub async fn get_one(
 ) -> Result<Json<super::models::Isolate>, (StatusCode, Json<String>)> {
     let auth = OptionalAuth::from_headers(req.headers());
     let mut query = super::db::Entity::find_by_id(id);
-    
+
     // Filter private records for unauthenticated users
     if !auth.is_authenticated {
         query = query.filter(super::db::Column::IsPrivate.eq(false));
     }
-    
+
     let obj = match query.one(&db).await {
         Ok(Some(obj)) => obj,
         Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
@@ -188,13 +175,22 @@ pub async fn create_one(
     match super::db::Entity::insert(new_obj).exec(&db).await {
         Ok(insert_result) => {
             // Internal call from admin-protected endpoint - fetch with admin privileges
-            let response_obj = match super::db::Entity::find_by_id(insert_result.last_insert_id).one(&db).await {
+            let response_obj = match super::db::Entity::find_by_id(insert_result.last_insert_id)
+                .one(&db)
+                .await
+            {
                 Ok(Some(obj)) => super::models::Isolate::from(obj),
                 Ok(None) => {
-                    return Err((StatusCode::NOT_FOUND, Json("Created object not found".to_string())))
+                    return Err((
+                        StatusCode::NOT_FOUND,
+                        Json("Created object not found".to_string()),
+                    ))
                 }
                 Err(_) => {
-                    return Err((StatusCode::INTERNAL_SERVER_ERROR, Json("Database error".to_string())))
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json("Database error".to_string()),
+                    ))
                 }
             };
 
@@ -243,10 +239,16 @@ pub async fn update_one(
     let obj = match super::db::Entity::find_by_id(id).one(&db).await {
         Ok(Some(obj)) => super::models::Isolate::from(obj),
         Ok(None) => {
-            return Err((StatusCode::NOT_FOUND, Json("Updated object not found".to_string())))
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json("Updated object not found".to_string()),
+            ))
         }
         Err(_) => {
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, Json("Database error".to_string())))
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("Database error".to_string()),
+            ))
         }
     };
 
