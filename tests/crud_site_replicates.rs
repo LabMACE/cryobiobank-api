@@ -39,7 +39,6 @@ async fn create_site_replicate_valid() {
     let create_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T",
-        "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
     let request = Request::builder()
@@ -83,7 +82,6 @@ async fn create_site_replicate_invalid_date() {
     let create_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T_Invalid",
-        "sample_type": "Snow",
         "sampling_date": "2023-02-30"  // February 30 is invalid.
     });
     let request = Request::builder()
@@ -125,7 +123,6 @@ async fn test_site_replicates_invalid_data() {
     let invalid_date_payload = json!({
         "site_id": site_id,
         "name": "Replicate_Invalid_Date",
-        "sample_type": "Snow",
         "sampling_date": "2023-02-30"  // invalid date
     });
     let request = Request::builder()
@@ -137,11 +134,10 @@ async fn test_site_replicates_invalid_data() {
     let response = app.clone().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    // Test missing required field (e.g. missing "sample_type")
+    // Test missing required field (e.g. missing "sampling_date")
     let missing_field_payload = json!({
         "site_id": site_id,
-        "name": "Replicate_Missing_SampleType",
-        "sampling_date": "2023-02-18"
+        "name": "Replicate_Missing_Date"
     });
     let request = Request::builder()
         .method("POST")

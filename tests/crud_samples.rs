@@ -37,7 +37,6 @@ async fn crud_samples() {
     let create_replicate_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T",
-        "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
     let request = Request::builder()
@@ -55,7 +54,7 @@ async fn crud_samples() {
     let create_payload = json!({
         "name": "P2S1-T",
         "site_replicate_id": replicate_id,
-        "type_of_sample": "Snow meltwater",
+        "sample_type": "Snow",
         "storage_location": "Samples: A1",
         "description": "Initial sample"
     });
@@ -87,7 +86,7 @@ async fn crud_samples() {
     let update_payload = json!({
         "name": "P2S1-T-Updated",
         "site_replicate_id": replicate_id,
-        "type_of_sample": "Snow meltwater",
+        "sample_type": "Snow",
         "storage_location": "Samples: A1",
         "description": "Updated sample"
     });
@@ -151,7 +150,6 @@ async fn test_samples_invalid_and_duplicate() {
     let create_replicate_payload = json!({
         "site_id": site_id,
         "name": "Sample_Replicate",
-        "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
     let request = Request::builder()
@@ -169,7 +167,7 @@ async fn test_samples_invalid_and_duplicate() {
     let invalid_uuid_payload = json!({
         "name": "Sample_Invalid_UUID",
         "site_replicate_id": "invalid-uuid",
-        "type_of_sample": "Snow meltwater",
+        "sample_type": "Snow",
         "storage_location": "Samples: Test",
         "description": "Test sample"
     });
@@ -186,7 +184,7 @@ async fn test_samples_invalid_and_duplicate() {
     let valid_payload = json!({
         "name": "Unique_Sample",
         "site_replicate_id": replicate_id,
-        "type_of_sample": "Snow meltwater",
+        "sample_type": "Snow",
         "storage_location": "Samples: Test",
         "description": "Test sample"
     });

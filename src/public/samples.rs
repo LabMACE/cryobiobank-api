@@ -8,6 +8,7 @@ use axum::{
     response::IntoResponse,
     routing, Json, Router,
 };
+use crate::common::enums::SampleType;
 use sea_orm::{
     query::*, ColumnTrait, DatabaseConnection, EntityTrait,
 };
@@ -20,7 +21,7 @@ pub struct PublicSample {
     pub id: Uuid,
     pub site_replicate_id: Uuid,
     pub name: String,
-    pub type_of_sample: Option<String>,
+    pub sample_type: SampleType,
     pub storage_location: Option<String>,
     pub description: Option<String>,
     pub dna_id: Option<Uuid>,
@@ -32,7 +33,7 @@ impl From<crate::samples::db::Model> for PublicSample {
             id: model.id,
             site_replicate_id: model.site_replicate_id,
             name: model.name,
-            type_of_sample: model.type_of_sample,
+            sample_type: model.sample_type,
             storage_location: model.storage_location,
             description: model.description,
             dna_id: model.dna_id,
@@ -58,7 +59,7 @@ pub async fn get_all(
         params.filter.clone(),
         &[
             ("name", crate::samples::db::Column::Name),
-            ("type_of_sample", crate::samples::db::Column::TypeOfSample),
+            ("sample_type", crate::samples::db::Column::SampleType),
             ("storage_location", crate::samples::db::Column::StorageLocation),
         ],
     );
@@ -68,7 +69,10 @@ pub async fn get_all(
 
     let (order_column, order_direction) = generic_sort(
         params.sort.clone(),
-        &[("name", crate::samples::db::Column::Name)],
+        &[
+            ("name", crate::samples::db::Column::Name),
+            ("sample_type", crate::samples::db::Column::SampleType),
+        ],
         crate::samples::db::Column::Name,
     );
 

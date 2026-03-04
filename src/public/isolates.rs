@@ -27,7 +27,7 @@ pub struct PublicIsolate {
     pub media_used_for_isolation: Option<String>,
     pub storage_location: Option<String>,
     pub dna_id: Option<Uuid>,
-    pub sample_type: Option<SampleType>,
+    pub sample_type: SampleType,
 }
 
 impl From<crate::isolates::db::Model> for PublicIsolate {

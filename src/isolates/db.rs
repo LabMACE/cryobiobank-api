@@ -37,7 +37,7 @@ pub struct Model {
 
     #[sea_orm(column_name = "sample_type")]
     #[crudcrate(sortable, filterable)]
-    pub sample_type: Option<SampleType>,
+    pub sample_type: SampleType,
 
     #[crudcrate(sortable, filterable)]
     pub dna_id: Option<Uuid>,
