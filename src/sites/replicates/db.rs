@@ -87,6 +87,8 @@ pub struct Model {
     pub organic_acids_acetate: Option<f64>,
     #[crudcrate(filterable)]
     pub is_private: bool,
+    #[crudcrate(sortable, filterable, fulltext)]
+    pub metagenome_url: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -97,11 +99,19 @@ pub enum Relation {
         to = "crate::sites::db::Column::Id"
     )]
     Site,
+    #[sea_orm(has_many = "crate::dna::db::Entity")]
+    DNA,
 }
 
 impl Related<crate::sites::db::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Site.def()
+    }
+}
+
+impl Related<crate::dna::db::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::DNA.def()
     }
 }
 impl ActiveModelBehavior for ActiveModel {}

@@ -24,7 +24,6 @@ pub struct PublicSample {
     pub sample_type: SampleType,
     pub storage_location: Option<String>,
     pub description: Option<String>,
-    pub dna_id: Option<Uuid>,
 }
 
 impl From<crate::samples::db::Model> for PublicSample {
@@ -36,7 +35,6 @@ impl From<crate::samples::db::Model> for PublicSample {
             sample_type: model.sample_type,
             storage_location: model.storage_location,
             description: model.description,
-            dna_id: model.dna_id,
         }
     }
 }

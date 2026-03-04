@@ -65,7 +65,7 @@ async fn create_isolate_valid() {
         "temperature_of_isolation": 20.5,
         "media_used_for_isolation": "M9",
         "storage_location": "Isolates: A1",
-        "dna_id": null
+        "genome_url": null
     });
     let request = Request::builder()
         .method("POST")
@@ -127,7 +127,7 @@ async fn test_isolates_invalid_data() {
         "temperature_of_isolation": "hot",  // invalid
         "media_used_for_isolation": "M9",
         "storage_location": "Isolates: Test",
-        "dna_id": null
+        "genome_url": null
     });
     let request = Request::builder()
         .method("POST")
@@ -148,7 +148,7 @@ async fn test_isolates_invalid_data() {
         "temperature_of_isolation": 20.5,
         "media_used_for_isolation": "M9",
         "storage_location": "Isolates: Test",
-        "dna_id": null
+        "genome_url": null
     });
     let request = Request::builder()
         .method("POST")
@@ -219,7 +219,7 @@ async fn test_isolate_images() {
         "temperature_of_isolation": 20.5,
         "media_used_for_isolation": "M9",
         "storage_location": "Isolates: A1",
-        "dna_id": null
+        "genome_url": null
     });
     let request = Request::builder()
         .method("POST")

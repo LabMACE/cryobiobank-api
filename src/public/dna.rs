@@ -21,6 +21,7 @@ pub struct PublicDna {
     pub name: String,
     pub description: Option<String>,
     pub extraction_method: Option<String>,
+    pub site_replicate_id: Uuid,
 }
 
 impl From<crate::dna::db::Model> for PublicDna {
@@ -30,6 +31,7 @@ impl From<crate::dna::db::Model> for PublicDna {
             name: model.name,
             description: model.description,
             extraction_method: model.extraction_method,
+            site_replicate_id: model.site_replicate_id,
         }
     }
 }
@@ -53,6 +55,7 @@ pub async fn get_all(
         &[
             ("name", crate::dna::db::Column::Name),
             ("extraction_method", crate::dna::db::Column::ExtractionMethod),
+            ("site_replicate_id", crate::dna::db::Column::SiteReplicateId),
         ],
     );
     

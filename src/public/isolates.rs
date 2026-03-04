@@ -26,7 +26,7 @@ pub struct PublicIsolate {
     pub temperature_of_isolation: Option<f64>,
     pub media_used_for_isolation: Option<String>,
     pub storage_location: Option<String>,
-    pub dna_id: Option<Uuid>,
+    pub genome_url: Option<String>,
     pub sample_type: SampleType,
 }
 
@@ -41,7 +41,7 @@ impl From<crate::isolates::db::Model> for PublicIsolate {
             temperature_of_isolation: model.temperature_of_isolation,
             media_used_for_isolation: model.media_used_for_isolation,
             storage_location: model.storage_location,
-            dna_id: model.dna_id,
+            genome_url: model.genome_url,
             sample_type: model.sample_type,
         }
     }
