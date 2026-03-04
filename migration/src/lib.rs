@@ -5,6 +5,7 @@ mod m20250122_142104_avoid_postgis_geometry;
 mod m20250124_113623_set_isolates_photo_to_text;
 mod m20250206_134125_add_areas;
 mod m20250926_140000_add_private_fields;
+mod m20260219_000000_add_sample_type_enum;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250124_113623_set_isolates_photo_to_text::Migration),
             Box::new(m20250206_134125_add_areas::Migration),
             Box::new(m20250926_140000_add_private_fields::Migration),
+            Box::new(m20260219_000000_add_sample_type_enum::Migration),
         ]
     }
 }

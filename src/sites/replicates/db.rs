@@ -1,3 +1,4 @@
+use crate::common::enums::SampleType;
 use chrono::NaiveDate;
 use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
@@ -11,7 +12,8 @@ use uuid::Uuid;
     name_singular = "site_replicate",
     name_plural = "site_replicates",
     description = "Site replicate sampling points with detailed environmental and chemical data",
-    no_eq
+    no_eq,
+    derive_partial_eq
 )]
 pub struct Model {
     #[sea_orm(primary_key)]
@@ -25,8 +27,8 @@ pub struct Model {
     pub name: String,
 
     #[sea_orm(column_name = "sample_type")]
-    #[crudcrate(sortable, filterable, fulltext)]
-    pub sample_type: String,
+    #[crudcrate(sortable, filterable)]
+    pub sample_type: SampleType,
     #[crudcrate(sortable, filterable)]
     pub sampling_date: NaiveDate,
     #[crudcrate(sortable, filterable)]

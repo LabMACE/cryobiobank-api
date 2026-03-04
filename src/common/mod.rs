@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod enums;
 pub mod filter;
 // pub mod geometry;
 pub mod models;

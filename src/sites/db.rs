@@ -33,7 +33,7 @@ pub struct Model {
     #[crudcrate(filterable)]
     pub is_private: bool,
     #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr, exclude(create, update), join(one, all))]
+    #[crudcrate(non_db_attr, exclude(create, update), join(one, all, depth = 1))]
     pub replicates: Vec<crate::sites::replicates::db::SiteReplicate>,
 }
 
@@ -58,57 +58,3 @@ impl Related<crate::areas::db::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
-
-// // Custom get_all function that includes site replicates
-// pub(super) async fn get_all_sites_with_replicates(
-//     db: &DatabaseConnection,
-//     condition: &Condition,
-//     order_column: Column,
-//     order_direction: Order,
-//     offset: u64,
-//     limit: u64,
-// ) -> Result<Vec<SiteList>, DbErr> {
-//     let models = Entity::find()
-//         .filter(condition.clone())
-//         .order_by(order_column, order_direction)
-//         .offset(offset)
-//         .limit(limit)
-//         .all(db)
-//         .await?;
-
-//     // Load replicates for all sites using the loader
-//     let replicates = models
-//         .load_many(crate::sites::replicates::db::Entity, db)
-//         .await?;
-
-//     let mut sites = Vec::new();
-//     for (model, site_replicates) in models.into_iter().zip(replicates.into_iter()) {
-//         let mut site: SiteList = model.into();
-//         site.replicates = site_replicates.into_iter().map(|r| r.into()).collect();
-//         sites.push(site);
-//     }
-
-//     Ok(sites)
-// }
-
-// // Custom get_one function that includes site replicates
-// pub(super) async fn get_one_site_with_replicates(
-//     db: &DatabaseConnection,
-//     id: Uuid,
-// ) -> Result<Site, DbErr> {
-//     let model = Entity::find_by_id(id)
-//         .one(db)
-//         .await?
-//         .ok_or(DbErr::RecordNotFound("Site not found".to_string()))?;
-
-//     // Load replicates for this site
-//     let replicates = model
-//         .find_related(crate::sites::replicates::db::Entity)
-//         .all(db)
-//         .await?;
-
-//     let mut site: Site = model.into();
-//     site.replicates = replicates.into_iter().map(|r| r.into()).collect();
-
-//     Ok(site)
-// }

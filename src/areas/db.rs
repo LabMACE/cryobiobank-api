@@ -1,4 +1,4 @@
-use crudcrate::{CRUDResource, EntityToModels};
+use crudcrate::{ApiError, CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
 use sea_orm::{Condition, DatabaseConnection, Order, QueryOrder, QuerySelect};
 use uuid::Uuid;
@@ -11,7 +11,7 @@ use uuid::Uuid;
     name_singular = "area",
     name_plural = "areas",
     description = "Geographic areas for organizing collection sites with convex hull geometry",
-    fn_get_all = get_all_areas_with_geometry
+    read::many::body = get_all_areas_with_geometry
 )]
 pub struct Model {
     #[sea_orm(primary_key)]
@@ -53,7 +53,7 @@ pub(super) async fn get_all_areas_with_geometry(
     order_direction: Order,
     offset: u64,
     limit: u64,
-) -> Result<Vec<AreaList>, DbErr> {
+) -> Result<Vec<AreaList>, ApiError> {
     let models = Entity::find()
         .filter(condition.clone())
         .order_by(order_column, order_direction)

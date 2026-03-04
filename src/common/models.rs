@@ -1,4 +1,6 @@
+use crate::common::enums::SampleType;
 use crate::config::Config;
+use sea_orm::Iterable;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 #[derive(ToSchema, Deserialize, Default)]
@@ -19,6 +21,7 @@ pub struct Keycloak {
 pub struct UIConfiguration {
     pub keycloak: Keycloak,
     pub deployment: String,
+    pub sample_types: Vec<String>,
 }
 
 impl UIConfiguration {
@@ -31,6 +34,7 @@ impl UIConfiguration {
                 url: config.keycloak_url,
             },
             deployment: config.deployment,
+            sample_types: SampleType::iter().map(|st| st.to_string()).collect(),
         }
     }
 }

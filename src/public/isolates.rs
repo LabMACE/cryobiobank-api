@@ -11,6 +11,7 @@ use axum::{
 use sea_orm::{
     query::*, ColumnTrait, DatabaseConnection, EntityTrait,
 };
+use crate::common::enums::SampleType;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -26,6 +27,7 @@ pub struct PublicIsolate {
     pub media_used_for_isolation: Option<String>,
     pub storage_location: Option<String>,
     pub dna_id: Option<Uuid>,
+    pub sample_type: Option<SampleType>,
 }
 
 impl From<crate::isolates::db::Model> for PublicIsolate {
@@ -40,6 +42,7 @@ impl From<crate::isolates::db::Model> for PublicIsolate {
             media_used_for_isolation: model.media_used_for_isolation,
             storage_location: model.storage_location,
             dna_id: model.dna_id,
+            sample_type: model.sample_type,
         }
     }
 }
@@ -66,9 +69,10 @@ pub async fn get_all(
             ("temperature_of_isolation", crate::isolates::db::Column::TemperatureOfIsolation),
             ("media_used_for_isolation", crate::isolates::db::Column::MediaUsedForIsolation),
             ("storage_location", crate::isolates::db::Column::StorageLocation),
+            ("sample_type", crate::isolates::db::Column::SampleType),
         ],
     );
-    
+
     // Only show non-private isolates
     condition = condition.add(crate::isolates::db::Column::IsPrivate.eq(false));
 
@@ -77,6 +81,7 @@ pub async fn get_all(
         &[
             ("name", crate::isolates::db::Column::Name),
             ("taxonomy", crate::isolates::db::Column::Taxonomy),
+            ("sample_type", crate::isolates::db::Column::SampleType),
         ],
         crate::isolates::db::Column::Name,
     );
