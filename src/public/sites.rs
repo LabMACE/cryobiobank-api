@@ -12,9 +12,10 @@ use sea_orm::{
     query::*, ColumnTrait, DatabaseConnection, EntityTrait,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
-/// Public site model - excludes private field and private sites
+/// Public site model - includes aggregated sample types and replicate IDs
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PublicSite {
     pub id: Uuid,
@@ -23,19 +24,8 @@ pub struct PublicSite {
     pub latitude_4326: f64,
     pub elevation_metres: f64,
     pub area_id: Option<Uuid>,
-}
-
-impl From<crate::sites::db::Model> for PublicSite {
-    fn from(model: crate::sites::db::Model) -> Self {
-        Self {
-            id: model.id,
-            name: model.name,
-            longitude_4326: model.longitude_4326,
-            latitude_4326: model.latitude_4326,
-            elevation_metres: model.elevation_metres,
-            area_id: model.area_id,
-        }
-    }
+    pub sample_types: Vec<String>,
+    pub replicate_ids: Vec<Uuid>,
 }
 
 pub fn router(db: DatabaseConnection) -> Router {
@@ -45,6 +35,121 @@ pub fn router(db: DatabaseConnection) -> Router {
         .with_state(db)
 }
 
+/// Enrichment data for sites: sample types + replicate IDs
+struct SiteEnrichment {
+    sample_types: HashMap<Uuid, Vec<String>>,
+    replicate_ids: HashMap<Uuid, Vec<Uuid>>,
+}
+
+/// Collect sample types and replicate IDs for a set of site IDs
+/// by joining through site_replicates → samples AND isolates
+async fn enrich_sites(db: &DatabaseConnection, site_ids: &[Uuid]) -> SiteEnrichment {
+    if site_ids.is_empty() {
+        return SiteEnrichment {
+            sample_types: HashMap::new(),
+            replicate_ids: HashMap::new(),
+        };
+    }
+
+    // Fetch non-private replicates for these sites
+    let replicates = crate::sites::replicates::db::Entity::find()
+        .filter(crate::sites::replicates::db::Column::SiteId.is_in(site_ids.to_vec()))
+        .filter(crate::sites::replicates::db::Column::IsPrivate.eq(false))
+        .all(db)
+        .await
+        .unwrap_or_default();
+
+    if replicates.is_empty() {
+        return SiteEnrichment {
+            sample_types: HashMap::new(),
+            replicate_ids: HashMap::new(),
+        };
+    }
+
+    // Build replicate_id → site_id lookup and site_id → replicate_ids
+    let mut rep_to_site: HashMap<Uuid, Uuid> = HashMap::new();
+    let mut site_rep_ids: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
+    for r in &replicates {
+        rep_to_site.insert(r.id, r.site_id);
+        site_rep_ids.entry(r.site_id).or_default().push(r.id);
+    }
+
+    let rep_ids: Vec<Uuid> = replicates.iter().map(|r| r.id).collect();
+    let mut site_types: HashMap<Uuid, HashSet<String>> = HashMap::new();
+
+    // Collect from non-private samples
+    let samples = crate::samples::db::Entity::find()
+        .filter(crate::samples::db::Column::SiteReplicateId.is_in(rep_ids.clone()))
+        .filter(crate::samples::db::Column::IsPrivate.eq(false))
+        .all(db)
+        .await
+        .unwrap_or_default();
+
+    for sample in &samples {
+        if let Some(&site_id) = rep_to_site.get(&sample.site_replicate_id) {
+            site_types
+                .entry(site_id)
+                .or_default()
+                .insert(sample.sample_type.to_string());
+        }
+    }
+
+    // Collect from non-private isolates
+    let isolates = crate::isolates::db::Entity::find()
+        .filter(crate::isolates::db::Column::SiteReplicateId.is_in(rep_ids))
+        .filter(crate::isolates::db::Column::IsPrivate.eq(false))
+        .all(db)
+        .await
+        .unwrap_or_default();
+
+    for isolate in &isolates {
+        if let Some(&site_id) = rep_to_site.get(&isolate.site_replicate_id) {
+            site_types
+                .entry(site_id)
+                .or_default()
+                .insert(isolate.sample_type.to_string());
+        }
+    }
+
+    let sample_types = site_types
+        .into_iter()
+        .map(|(k, v)| {
+            let mut types: Vec<String> = v.into_iter().collect();
+            types.sort();
+            (k, types)
+        })
+        .collect();
+
+    SiteEnrichment {
+        sample_types,
+        replicate_ids: site_rep_ids,
+    }
+}
+
+fn build_public_site(
+    obj: crate::sites::db::Model,
+    enrichment: &SiteEnrichment,
+) -> PublicSite {
+    PublicSite {
+        sample_types: enrichment
+            .sample_types
+            .get(&obj.id)
+            .cloned()
+            .unwrap_or_default(),
+        replicate_ids: enrichment
+            .replicate_ids
+            .get(&obj.id)
+            .cloned()
+            .unwrap_or_default(),
+        id: obj.id,
+        name: obj.name,
+        longitude_4326: obj.longitude_4326,
+        latitude_4326: obj.latitude_4326,
+        elevation_metres: obj.elevation_metres,
+        area_id: obj.area_id,
+    }
+}
+
 /// Get all public sites (non-private only)
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
@@ -52,9 +157,8 @@ pub async fn get_all(
 ) -> impl IntoResponse {
     let (offset, limit) = parse_range(params.range.clone());
 
-    let mut condition = apply_filters(params.filter.clone(), &[("name", crate::sites::db::Column::Name)]);
-    
-    // Only show non-private sites
+    let mut condition =
+        apply_filters(params.filter.clone(), &[("name", crate::sites::db::Column::Name)]);
     condition = condition.add(crate::sites::db::Column::IsPrivate.eq(false));
 
     let (order_column, order_direction) = generic_sort(
@@ -72,8 +176,13 @@ pub async fn get_all(
         .await
         .unwrap();
 
-    // Map to public models - no complex relationships for public API
-    let response_objs: Vec<PublicSite> = objs.into_iter().map(|obj| obj.into()).collect();
+    let site_ids: Vec<Uuid> = objs.iter().map(|s| s.id).collect();
+    let enrichment = enrich_sites(&db, &site_ids).await;
+
+    let response_objs: Vec<PublicSite> = objs
+        .into_iter()
+        .map(|obj| build_public_site(obj, &enrichment))
+        .collect();
 
     let total_count: u64 = crate::sites::db::Entity::find()
         .filter(condition)
@@ -82,7 +191,10 @@ pub async fn get_all(
         .unwrap();
 
     let mut headers = calculate_content_range(offset, limit, total_count, "sites");
-    headers.insert("Access-Control-Expose-Headers", "Content-Range".parse().unwrap());
+    headers.insert(
+        "Access-Control-Expose-Headers",
+        "Content-Range".parse().unwrap(),
+    );
 
     (headers, Json(response_objs))
 }
@@ -107,6 +219,6 @@ pub async fn get_one(
         }
     };
 
-    let site = PublicSite::from(obj);
-    Ok(Json(site))
+    let enrichment = enrich_sites(&db, &[obj.id]).await;
+    Ok(Json(build_public_site(obj, &enrichment)))
 }

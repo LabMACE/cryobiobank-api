@@ -70,6 +70,7 @@ pub async fn get_all(
             ("media_used_for_isolation", crate::isolates::db::Column::MediaUsedForIsolation),
             ("storage_location", crate::isolates::db::Column::StorageLocation),
             ("sample_type", crate::isolates::db::Column::SampleType),
+            ("site_replicate_id", crate::isolates::db::Column::SiteReplicateId),
         ],
     );
 

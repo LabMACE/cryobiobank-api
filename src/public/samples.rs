@@ -59,6 +59,7 @@ pub async fn get_all(
             ("name", crate::samples::db::Column::Name),
             ("sample_type", crate::samples::db::Column::SampleType),
             ("storage_location", crate::samples::db::Column::StorageLocation),
+            ("site_replicate_id", crate::samples::db::Column::SiteReplicateId),
         ],
     );
     
