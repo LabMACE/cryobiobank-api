@@ -16,7 +16,7 @@ use uuid::Uuid;
 )]
 pub struct Model {
     #[sea_orm(primary_key)]
-    #[crudcrate(primary_key, exclude(update, create), on_create = Uuid::new_v4())]
+    #[crudcrate(primary_key, filterable, exclude(update, create), on_create = Uuid::new_v4())]
     pub id: Uuid,
     #[crudcrate(sortable, filterable)]
     pub site_id: Uuid,
@@ -89,6 +89,15 @@ pub struct Model {
     pub is_private: bool,
     #[crudcrate(sortable, filterable, fulltext)]
     pub metagenome_url: Option<String>,
+    #[sea_orm(ignore)]
+    #[crudcrate(non_db_attr, exclude(create, update))]
+    pub sample_count: Option<i64>,
+    #[sea_orm(ignore)]
+    #[crudcrate(non_db_attr, exclude(create, update))]
+    pub isolate_count: Option<i64>,
+    #[sea_orm(ignore)]
+    #[crudcrate(non_db_attr, exclude(create, update))]
+    pub dna_count: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

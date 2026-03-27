@@ -14,7 +14,7 @@ use uuid::Uuid;
 )]
 pub struct Model {
     #[sea_orm(primary_key)]
-    #[crudcrate(primary_key, exclude(update, create), on_create = Uuid::new_v4())]
+    #[crudcrate(primary_key, filterable, exclude(update, create), on_create = Uuid::new_v4())]
     pub id: Uuid,
     #[sea_orm(unique)]
     #[crudcrate(sortable, filterable, fulltext)]

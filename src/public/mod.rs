@@ -3,6 +3,7 @@ pub mod areas;
 pub mod isolates;
 pub mod samples;
 pub mod dna;
+pub mod site_replicates;
 
 use axum::Router;
 use sea_orm::DatabaseConnection;
@@ -15,4 +16,5 @@ pub fn router(db: DatabaseConnection) -> Router {
         .nest("/isolates", isolates::router(db.clone()))
         .nest("/samples", samples::router(db.clone()))
         .nest("/dna", dna::router(db.clone()))
+        .nest("/site_replicates", site_replicates::router(db.clone()))
 }
