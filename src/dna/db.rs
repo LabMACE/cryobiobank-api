@@ -23,7 +23,7 @@ pub struct Model {
     pub description: Option<String>,
     #[crudcrate(sortable, filterable, fulltext)]
     pub extraction_method: Option<String>,
-    #[crudcrate(filterable)]
+    #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,
     #[crudcrate(sortable, filterable)]
     pub site_replicate_id: Uuid,

@@ -4,12 +4,6 @@ use sea_orm::{DatabaseConnection, DbBackend, Statement};
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Get convex hull for a single area (kept for backward compatibility with admin hooks)
-pub async fn get_convex_hull(db: &DatabaseConnection, area_id: Uuid) -> Option<Value> {
-    let hulls = get_convex_hulls_batch(db, &[area_id]).await;
-    hulls.into_values().next()
-}
-
 /// Batch-fetch convex hulls for multiple areas in a single PostGIS query.
 pub async fn get_convex_hulls_batch(
     db: &DatabaseConnection,

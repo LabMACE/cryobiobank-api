@@ -41,7 +41,7 @@ pub struct Model {
 
     #[crudcrate(sortable, filterable, fulltext)]
     pub genome_url: Option<String>,
-    #[crudcrate(filterable)]
+    #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,
 }
 

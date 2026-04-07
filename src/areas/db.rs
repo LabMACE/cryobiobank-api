@@ -24,7 +24,7 @@ pub struct Model {
     pub description: Option<String>,
     #[crudcrate(sortable, filterable)]
     pub colour: String,
-    #[crudcrate(filterable)]
+    #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,
     #[sea_orm(ignore)]
     #[crudcrate(non_db_attr)]
@@ -62,13 +62,19 @@ pub(super) async fn get_all_areas_with_geometry(
         .all(db)
         .await?;
 
-    let mut areas = Vec::new();
-    for model in models {
-        let geom = crate::areas::services::get_convex_hull(db, model.id).await;
-        let mut area: AreaList = model.into();
-        area.geom = geom;
-        areas.push(area);
-    }
+    // Batch-fetch all convex hulls in one PostGIS query (instead of N+1)
+    let area_ids: Vec<Uuid> = models.iter().map(|m| m.id).collect();
+    let hulls = crate::areas::services::get_convex_hulls_batch(db, &area_ids).await;
+
+    let areas = models
+        .into_iter()
+        .map(|model| {
+            let geom = hulls.get(&model.id).cloned();
+            let mut area: AreaList = model.into();
+            area.geom = geom;
+            area
+        })
+        .collect();
 
     Ok(areas)
 }

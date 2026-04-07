@@ -13,7 +13,7 @@ use uuid::Uuid;
     name_plural = "sites",
     description = "Collection sites with coordinates and associated site replicates",
     read::one::body = get_one_site_with_counts,
-    join(name = "replicates", result = "Vec<crate::sites::replicates::db::SiteReplicate>", one, all, depth = 0),
+    join(name = "replicates", result = "Vec<crate::sites::replicates::db::SiteReplicate>", one, depth = 0),
     no_eq
 )]
 pub struct Model {
@@ -32,7 +32,7 @@ pub struct Model {
     pub elevation_metres: f64,
     #[crudcrate(sortable, filterable)]
     pub area_id: Option<Uuid>,
-    #[crudcrate(filterable)]
+    #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,
 }
 

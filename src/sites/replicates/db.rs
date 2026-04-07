@@ -85,7 +85,7 @@ pub struct Model {
     pub organic_acids_oxalate: Option<f64>,
     #[crudcrate(sortable, filterable)]
     pub organic_acids_acetate: Option<f64>,
-    #[crudcrate(filterable)]
+    #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,
     #[crudcrate(sortable, filterable, fulltext)]
     pub metagenome_url: Option<String>,

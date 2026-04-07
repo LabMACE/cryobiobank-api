@@ -29,7 +29,7 @@ pub struct Model {
     pub storage_location: Option<String>,
     #[crudcrate(sortable, filterable, fulltext)]
     pub description: Option<String>,
-    #[crudcrate(filterable)]
+    #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,
 }
 

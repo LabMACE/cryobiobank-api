@@ -3,7 +3,7 @@ mod common;
 mod config;
 mod dna;
 mod isolates;
-mod public;
+mod middleware;
 mod samples;
 mod sites;
 
@@ -54,102 +54,71 @@ async fn run() {
             .build(),
     ));
 
+    // Keycloak layer in Pass mode — lets all requests through, stores auth status in extensions
+    let keycloak_pass_layer =
+        axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
+            .instance(keycloak_auth_instance.clone())
+            .passthrough_mode(axum_keycloak_auth::PassthroughMode::Pass)
+            .persist_raw_claims(false)
+            .expected_audiences(vec![String::from("account")])
+            .required_roles(vec![common::auth::Role::Administrator])
+            .build();
+
+    // Single API surface: auth state determines behavior
+    // - Admin (authenticated): full CRUD, no filtering
+    // - Public (unauthenticated): read-only, privacy-filtered via ScopeCondition
     let app: Router = Router::new()
         .route("/healthz", get(common::views::healthz))
         .route("/api/config", get(common::views::get_ui_config))
         .with_state(db.clone())
-        .nest("/api/public", public::router(db.clone()))
-        // Admin API routes - Keycloak protected, full access to all records
         .nest(
-            "/api/admin/sites",
+            "/api/sites",
             sites::db::Site::router(&db.clone())
-                .layer(
-                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
-                        .instance(keycloak_auth_instance.clone())
-                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
-                        .persist_raw_claims(false)
-                        .expected_audiences(vec![String::from("account")])
-                        .required_roles(vec![common::auth::Role::Administrator])
-                        .build(),
-                ).into(),
+                .layer(axum::middleware::from_fn(middleware::scope_sites))
+                .layer(keycloak_pass_layer.clone())
+                .into(),
         )
         .nest(
-            "/api/admin/site_replicates",
+            "/api/site_replicates",
             sites::replicates::db::SiteReplicate::router(&db.clone())
-                .layer(
-                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
-                        .instance(keycloak_auth_instance.clone())
-                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
-                        .persist_raw_claims(false)
-                        .expected_audiences(vec![String::from("account")])
-                        .required_roles(vec![common::auth::Role::Administrator])
-                        .build(),
-                ).into(),
+                .layer(axum::middleware::from_fn(middleware::scope_site_replicates))
+                .layer(keycloak_pass_layer.clone())
+                .into(),
         )
         .nest(
-            "/api/admin/samples",
+            "/api/samples",
             samples::db::Sample::router(&db.clone())
-                .layer(
-                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
-                        .instance(keycloak_auth_instance.clone())
-                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
-                        .persist_raw_claims(false)
-                        .expected_audiences(vec![String::from("account")])
-                        .required_roles(vec![common::auth::Role::Administrator])
-                        .build(),
-                ).into(),
+                .layer(axum::middleware::from_fn(middleware::scope_samples))
+                .layer(keycloak_pass_layer.clone())
+                .into(),
         )
         .nest(
-            "/api/admin/isolates",
+            "/api/isolates",
             isolates::db::Isolate::router(&db.clone())
-                .layer(
-                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
-                        .instance(keycloak_auth_instance.clone())
-                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
-                        .persist_raw_claims(false)
-                        .expected_audiences(vec![String::from("account")])
-                        .required_roles(vec![common::auth::Role::Administrator])
-                        .build(),
-                ).into(),
+                .layer(axum::middleware::from_fn(middleware::scope_isolates))
+                .layer(keycloak_pass_layer.clone())
+                .into(),
         )
         .nest(
-            "/api/admin/dna",
+            "/api/dna",
             dna::db::DNA::router(&db.clone())
-                .layer(
-                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
-                        .instance(keycloak_auth_instance.clone())
-                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
-                        .persist_raw_claims(false)
-                        .expected_audiences(vec![String::from("account")])
-                        .required_roles(vec![common::auth::Role::Administrator])
-                        .build(),
-                ).into(),
+                .layer(axum::middleware::from_fn(middleware::scope_dna))
+                .layer(keycloak_pass_layer.clone())
+                .into(),
         )
         .nest(
-            "/api/admin/areas",
+            "/api/areas",
             areas::db::Area::router(&db.clone())
-                .layer(
-                    axum_keycloak_auth::layer::KeycloakAuthLayer::<common::auth::Role>::builder()
-                        .instance(keycloak_auth_instance.clone())
-                        .passthrough_mode(axum_keycloak_auth::PassthroughMode::Block)
-                        .persist_raw_claims(false)
-                        .expected_audiences(vec![String::from("account")])
-                        .required_roles(vec![common::auth::Role::Administrator])
-                        .build(),
-                ).into(),
-        )
-        // .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        // .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
-        // .merge(Scalar::with_url("/scalar", ApiDoc::openapi()))
-        ;
+                .layer(axum::middleware::from_fn(middleware::scope_areas))
+                .layer(keycloak_pass_layer)
+                .into(),
+        );
 
     let addr: std::net::SocketAddr = "0.0.0.0:3000".parse().unwrap();
     println!("Listening on {}", addr);
 
-    // Run the server
     let server = axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app);
 
-    // Wait for both the server and the background task to complete
     tokio::select! {
         res = server => {
             if let Err(err) = res {
