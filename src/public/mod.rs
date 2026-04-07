@@ -1,3 +1,4 @@
+mod privacy;
 pub mod sites;
 pub mod areas;
 pub mod isolates;

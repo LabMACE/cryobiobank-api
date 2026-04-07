@@ -77,13 +77,19 @@ async fn enrich_sites(db: &DatabaseConnection, site_ids: &[Uuid]) -> SiteEnrichm
     let rep_ids: Vec<Uuid> = replicates.iter().map(|r| r.id).collect();
     let mut site_types: HashMap<Uuid, HashSet<String>> = HashMap::new();
 
-    // Collect from non-private samples
-    let samples = crate::samples::db::Entity::find()
-        .filter(crate::samples::db::Column::SiteReplicateId.is_in(rep_ids.clone()))
-        .filter(crate::samples::db::Column::IsPrivate.eq(false))
-        .all(db)
-        .await
-        .unwrap_or_default();
+    // Fetch samples and isolates in parallel
+    let (samples, isolates) = tokio::join!(
+        crate::samples::db::Entity::find()
+            .filter(crate::samples::db::Column::SiteReplicateId.is_in(rep_ids.clone()))
+            .filter(crate::samples::db::Column::IsPrivate.eq(false))
+            .all(db),
+        crate::isolates::db::Entity::find()
+            .filter(crate::isolates::db::Column::SiteReplicateId.is_in(rep_ids))
+            .filter(crate::isolates::db::Column::IsPrivate.eq(false))
+            .all(db),
+    );
+    let samples = samples.unwrap_or_default();
+    let isolates = isolates.unwrap_or_default();
 
     for sample in &samples {
         if let Some(&site_id) = rep_to_site.get(&sample.site_replicate_id) {
@@ -93,14 +99,6 @@ async fn enrich_sites(db: &DatabaseConnection, site_ids: &[Uuid]) -> SiteEnrichm
                 .insert(sample.sample_type.to_string());
         }
     }
-
-    // Collect from non-private isolates
-    let isolates = crate::isolates::db::Entity::find()
-        .filter(crate::isolates::db::Column::SiteReplicateId.is_in(rep_ids))
-        .filter(crate::isolates::db::Column::IsPrivate.eq(false))
-        .all(db)
-        .await
-        .unwrap_or_default();
 
     for isolate in &isolates {
         if let Some(&site_id) = rep_to_site.get(&isolate.site_replicate_id) {
@@ -150,11 +148,12 @@ fn build_public_site(
     }
 }
 
-/// Get all public sites (non-private only)
+/// Get all public sites (non-private only, and only if parent area is not private)
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
     State(db): State<DatabaseConnection>,
 ) -> impl IntoResponse {
+
     let (offset, limit) = parse_range(params.range.clone());
 
     let mut condition =
@@ -167,8 +166,23 @@ pub async fn get_all(
         crate::sites::db::Column::Name,
     );
 
+
+    let public_area_ids = crate::areas::db::Entity::find()
+        .filter(crate::areas::db::Column::IsPrivate.eq(false))
+        .select_only()
+        .column(crate::areas::db::Column::Id)
+        .into_tuple::<Uuid>()
+        .all(&db)
+        .await
+        .unwrap_or_default();
+
     let objs = crate::sites::db::Entity::find()
         .filter(condition.clone())
+        .filter(
+            Condition::any()
+                .add(crate::sites::db::Column::AreaId.is_null())
+                .add(crate::sites::db::Column::AreaId.is_in(public_area_ids.clone()))
+        )
         .order_by(order_column, order_direction)
         .offset(offset)
         .limit(limit)
@@ -176,8 +190,10 @@ pub async fn get_all(
         .await
         .unwrap();
 
+
     let site_ids: Vec<Uuid> = objs.iter().map(|s| s.id).collect();
     let enrichment = enrich_sites(&db, &site_ids).await;
+
 
     let response_objs: Vec<PublicSite> = objs
         .into_iter()
@@ -186,6 +202,11 @@ pub async fn get_all(
 
     let total_count: u64 = crate::sites::db::Entity::find()
         .filter(condition)
+        .filter(
+            Condition::any()
+                .add(crate::sites::db::Column::AreaId.is_null())
+                .add(crate::sites::db::Column::AreaId.is_in(public_area_ids))
+        )
         .count(&db)
         .await
         .unwrap();
@@ -199,16 +220,13 @@ pub async fn get_all(
     (headers, Json(response_objs))
 }
 
-/// Get single public site by ID (only if not private)
+/// Get single public site by ID (only if not private and parent area is not private)
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PublicSite>, (StatusCode, Json<String>)> {
-    let obj = match crate::sites::db::Entity::find_by_id(id)
-        .filter(crate::sites::db::Column::IsPrivate.eq(false))
-        .one(&db)
-        .await
-    {
+    // Find the site first
+    let site = match crate::sites::db::Entity::find_by_id(id).one(&db).await {
         Ok(Some(obj)) => obj,
         Ok(None) => return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string()))),
         Err(_) => {
@@ -219,6 +237,20 @@ pub async fn get_one(
         }
     };
 
-    let enrichment = enrich_sites(&db, &[obj.id]).await;
-    Ok(Json(build_public_site(obj, &enrichment)))
+    // Check site privacy
+    if site.is_private {
+        return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string())));
+    }
+
+    // Check parent area privacy if area_id is set
+    if let Some(area_id) = site.area_id {
+        if let Ok(Some(area)) = crate::areas::db::Entity::find_by_id(area_id).one(&db).await {
+            if area.is_private {
+                return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string())));
+            }
+        }
+    }
+
+    let enrichment = enrich_sites(&db, &[site.id]).await;
+    Ok(Json(build_public_site(site, &enrichment)))
 }

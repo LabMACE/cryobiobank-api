@@ -26,7 +26,7 @@ pub struct Model {
 
     #[crudcrate(sortable, filterable, fulltext)]
     pub taxonomy: Option<String>,
-    #[crudcrate(filterable)]
+    #[crudcrate(filterable, exclude(list))]
     pub photo: Option<String>,
     #[crudcrate(sortable, filterable)]
     pub temperature_of_isolation: Option<f64>,

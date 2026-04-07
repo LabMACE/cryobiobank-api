@@ -48,11 +48,12 @@ pub fn router(db: DatabaseConnection) -> Router {
         .with_state(db)
 }
 
-/// Get all public site replicates (non-private only)
+/// Get all public site replicates (non-private only, and only if parent site and its area are not private)
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
     State(db): State<DatabaseConnection>,
 ) -> impl IntoResponse {
+
     let (offset, limit) = parse_range(params.range.clone());
 
     let mut condition = apply_filters(
@@ -76,8 +77,11 @@ pub async fn get_all(
         crate::sites::replicates::db::Column::Name,
     );
 
+    let public_site_ids = super::privacy::get_public_site_ids(&db).await;
+
     let objs = crate::sites::replicates::db::Entity::find()
         .filter(condition.clone())
+        .filter(crate::sites::replicates::db::Column::SiteId.is_in(public_site_ids.clone()))
         .order_by(order_column, order_direction)
         .offset(offset)
         .limit(limit)
@@ -89,6 +93,7 @@ pub async fn get_all(
 
     let total_count: u64 = crate::sites::replicates::db::Entity::find()
         .filter(condition)
+        .filter(crate::sites::replicates::db::Column::SiteId.is_in(public_site_ids))
         .count(&db)
         .await
         .unwrap();
@@ -99,13 +104,12 @@ pub async fn get_all(
     (headers, Json(response_objs))
 }
 
-/// Get single public site replicate by ID (only if not private)
+/// Get single public site replicate by ID (only if not private and parent site/area are not private)
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PublicSiteReplicate>, (StatusCode, Json<String>)> {
-    let obj = match crate::sites::replicates::db::Entity::find_by_id(id)
-        .filter(crate::sites::replicates::db::Column::IsPrivate.eq(false))
+    let replicate = match crate::sites::replicates::db::Entity::find_by_id(id)
         .one(&db)
         .await
     {
@@ -119,5 +123,13 @@ pub async fn get_one(
         }
     };
 
-    Ok(Json(PublicSiteReplicate::from(obj)))
+    // Check replicate privacy
+    if replicate.is_private {
+        return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string())));
+    }
+
+    // Check parent site/area privacy
+    super::privacy::check_site_ancestry_public(&db, replicate.site_id).await?;
+
+    Ok(Json(PublicSiteReplicate::from(replicate)))
 }

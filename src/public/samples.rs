@@ -46,7 +46,7 @@ pub fn router(db: DatabaseConnection) -> Router {
         .with_state(db)
 }
 
-/// Get all public samples (non-private only)
+/// Get all public samples (non-private only, and only if all ancestors are not private)
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
     State(db): State<DatabaseConnection>,
@@ -62,7 +62,7 @@ pub async fn get_all(
             ("site_replicate_id", crate::samples::db::Column::SiteReplicateId),
         ],
     );
-    
+
     // Only show non-private samples
     condition = condition.add(crate::samples::db::Column::IsPrivate.eq(false));
 
@@ -75,8 +75,11 @@ pub async fn get_all(
         crate::samples::db::Column::Name,
     );
 
+    let public_replicate_ids = super::privacy::get_public_replicate_ids(&db).await;
+
     let objs = crate::samples::db::Entity::find()
         .filter(condition.clone())
+        .filter(crate::samples::db::Column::SiteReplicateId.is_in(public_replicate_ids.clone()))
         .order_by(order_column, order_direction)
         .offset(offset)
         .limit(limit)
@@ -88,6 +91,7 @@ pub async fn get_all(
 
     let total_count: u64 = crate::samples::db::Entity::find()
         .filter(condition)
+        .filter(crate::samples::db::Column::SiteReplicateId.is_in(public_replicate_ids))
         .count(&db)
         .await
         .unwrap();
@@ -98,13 +102,12 @@ pub async fn get_all(
     (headers, Json(response_objs))
 }
 
-/// Get single public sample by ID (only if not private)
+/// Get single public sample by ID (only if not private and all ancestors are not private)
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PublicSample>, (StatusCode, Json<String>)> {
-    let obj = match crate::samples::db::Entity::find_by_id(id)
-        .filter(crate::samples::db::Column::IsPrivate.eq(false))
+    let sample = match crate::samples::db::Entity::find_by_id(id)
         .one(&db)
         .await
     {
@@ -118,5 +121,13 @@ pub async fn get_one(
         }
     };
 
-    Ok(Json(PublicSample::from(obj)))
+    // Check sample privacy
+    if sample.is_private {
+        return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string())));
+    }
+
+    // Check parent replicate/site/area privacy
+    super::privacy::check_replicate_ancestry_public(&db, sample.site_replicate_id).await?;
+
+    Ok(Json(PublicSample::from(sample)))
 }

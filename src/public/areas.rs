@@ -26,8 +26,9 @@ pub struct PublicArea {
 impl PublicArea {
     /// Create PublicArea from database model with geometry data
     pub async fn from_model_with_geom(model: crate::areas::db::Model, db: &sea_orm::DatabaseConnection) -> Self {
-        // Get geometry data using the same service as the original areas module
+
         let geom_data = crate::areas::services::get_convex_hull(db, model.id).await;
+
 
         Self {
             id: model.id,
@@ -63,6 +64,7 @@ pub async fn get_all(
     Query(params): Query<FilterOptions>,
     State(db): State<DatabaseConnection>,
 ) -> Result<(axum::http::HeaderMap, Json<Vec<PublicArea>>), (StatusCode, String)> {
+
     let (offset, limit) = parse_range(params.range.clone());
 
     let mut condition = apply_filters(params.filter.clone(), &[("name", crate::areas::db::Column::Name)]);
@@ -85,12 +87,25 @@ pub async fn get_all(
         .await
         .unwrap();
 
-    // Process each area with geometry data (same as original areas module)
-    let mut response_objs: Vec<PublicArea> = Vec::new();
-    for obj in objs {
-        let public_area = PublicArea::from_model_with_geom(obj, &db).await;
-        response_objs.push(public_area);
-    }
+
+    // Batch-fetch all convex hulls in one PostGIS query (instead of N+1)
+    let area_ids: Vec<Uuid> = objs.iter().map(|o| o.id).collect();
+    let hulls = crate::areas::services::get_convex_hulls_batch(&db, &area_ids).await;
+
+    let response_objs: Vec<PublicArea> = objs
+        .into_iter()
+        .map(|obj| {
+            let geom = hulls.get(&obj.id).cloned();
+            PublicArea {
+                id: obj.id,
+                name: obj.name,
+                description: obj.description,
+                colour: Some(obj.colour),
+                geom,
+            }
+        })
+        .collect();
+
 
     let total_count: u64 = crate::areas::db::Entity::find()
         .filter(condition)

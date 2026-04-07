@@ -43,7 +43,7 @@ pub fn router(db: DatabaseConnection) -> Router {
         .with_state(db)
 }
 
-/// Get all public DNA records (non-private only)
+/// Get all public DNA records (non-private only, and only if all ancestors are not private)
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
     State(db): State<DatabaseConnection>,
@@ -58,7 +58,7 @@ pub async fn get_all(
             ("site_replicate_id", crate::dna::db::Column::SiteReplicateId),
         ],
     );
-    
+
     // Only show non-private DNA records
     condition = condition.add(crate::dna::db::Column::IsPrivate.eq(false));
 
@@ -68,8 +68,11 @@ pub async fn get_all(
         crate::dna::db::Column::Name,
     );
 
+    let public_replicate_ids = super::privacy::get_public_replicate_ids(&db).await;
+
     let objs = crate::dna::db::Entity::find()
         .filter(condition.clone())
+        .filter(crate::dna::db::Column::SiteReplicateId.is_in(public_replicate_ids.clone()))
         .order_by(order_column, order_direction)
         .offset(offset)
         .limit(limit)
@@ -81,6 +84,7 @@ pub async fn get_all(
 
     let total_count: u64 = crate::dna::db::Entity::find()
         .filter(condition)
+        .filter(crate::dna::db::Column::SiteReplicateId.is_in(public_replicate_ids))
         .count(&db)
         .await
         .unwrap();
@@ -91,13 +95,12 @@ pub async fn get_all(
     (headers, Json(response_objs))
 }
 
-/// Get single public DNA record by ID (only if not private)
+/// Get single public DNA record by ID (only if not private and all ancestors are not private)
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PublicDna>, (StatusCode, Json<String>)> {
-    let obj = match crate::dna::db::Entity::find_by_id(id)
-        .filter(crate::dna::db::Column::IsPrivate.eq(false))
+    let dna = match crate::dna::db::Entity::find_by_id(id)
         .one(&db)
         .await
     {
@@ -111,5 +114,13 @@ pub async fn get_one(
         }
     };
 
-    Ok(Json(PublicDna::from(obj)))
+    // Check dna privacy
+    if dna.is_private {
+        return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string())));
+    }
+
+    // Check parent replicate/site/area privacy
+    super::privacy::check_replicate_ancestry_public(&db, dna.site_replicate_id).await?;
+
+    Ok(Json(PublicDna::from(dna)))
 }

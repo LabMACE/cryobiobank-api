@@ -14,8 +14,16 @@ use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DatabaseConnection};
 use std::sync::Arc;
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    tokio::runtime::Builder::new_multi_thread()
+        .thread_stack_size(8 * 1024 * 1024)
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(run())
+}
+
+async fn run() {
     let config = Config::from_env();
 
     let db: DatabaseConnection = Database::connect(&*config.db_url.as_ref().unwrap())
@@ -50,7 +58,6 @@ async fn main() {
         .route("/healthz", get(common::views::healthz))
         .route("/api/config", get(common::views::get_ui_config))
         .with_state(db.clone())
-        // Public API routes - no authentication required, only non-private records
         .nest("/api/public", public::router(db.clone()))
         // Admin API routes - Keycloak protected, full access to all records
         .nest(

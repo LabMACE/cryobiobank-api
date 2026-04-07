@@ -22,7 +22,6 @@ pub struct PublicIsolate {
     pub site_replicate_id: Uuid,
     pub name: String,
     pub taxonomy: Option<String>,
-    pub photo: Option<String>,
     pub temperature_of_isolation: Option<f64>,
     pub media_used_for_isolation: Option<String>,
     pub storage_location: Option<String>,
@@ -37,7 +36,6 @@ impl From<crate::isolates::db::Model> for PublicIsolate {
             site_replicate_id: model.site_replicate_id,
             name: model.name,
             taxonomy: model.taxonomy,
-            photo: model.photo,
             temperature_of_isolation: model.temperature_of_isolation,
             media_used_for_isolation: model.media_used_for_isolation,
             storage_location: model.storage_location,
@@ -54,11 +52,12 @@ pub fn router(db: DatabaseConnection) -> Router {
         .with_state(db)
 }
 
-/// Get all public isolates (non-private only)
+/// Get all public isolates (non-private only, and only if all ancestors are not private)
 pub async fn get_all(
     Query(params): Query<FilterOptions>,
     State(db): State<DatabaseConnection>,
 ) -> impl IntoResponse {
+
     let (offset, limit) = parse_range(params.range.clone());
 
     let mut condition = apply_filters(
@@ -87,22 +86,26 @@ pub async fn get_all(
         crate::isolates::db::Column::Name,
     );
 
-    let objs = crate::isolates::db::Entity::find()
-        .filter(condition.clone())
-        .order_by(order_column, order_direction)
-        .offset(offset)
-        .limit(limit)
-        .all(&db)
-        .await
-        .unwrap();
+    let public_replicate_ids = super::privacy::get_public_replicate_ids(&db).await;
+
+    // Run data fetch and count in parallel
+    let (objs, total_count) = tokio::join!(
+        crate::isolates::db::Entity::find()
+            .filter(condition.clone())
+            .filter(crate::isolates::db::Column::SiteReplicateId.is_in(public_replicate_ids.clone()))
+            .order_by(order_column, order_direction)
+            .offset(offset)
+            .limit(limit)
+            .all(&db),
+        crate::isolates::db::Entity::find()
+            .filter(condition)
+            .filter(crate::isolates::db::Column::SiteReplicateId.is_in(public_replicate_ids))
+            .count(&db),
+    );
+    let objs = objs.unwrap();
+    let total_count: u64 = total_count.unwrap();
 
     let response_objs: Vec<PublicIsolate> = objs.into_iter().map(|obj| obj.into()).collect();
-
-    let total_count: u64 = crate::isolates::db::Entity::find()
-        .filter(condition)
-        .count(&db)
-        .await
-        .unwrap();
 
     let mut headers = calculate_content_range(offset, limit, total_count, "isolates");
     headers.insert("Access-Control-Expose-Headers", "Content-Range".parse().unwrap());
@@ -110,13 +113,12 @@ pub async fn get_all(
     (headers, Json(response_objs))
 }
 
-/// Get single public isolate by ID (only if not private)
+/// Get single public isolate by ID (only if not private and all ancestors are not private)
 pub async fn get_one(
     State(db): State<DatabaseConnection>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PublicIsolate>, (StatusCode, Json<String>)> {
-    let obj = match crate::isolates::db::Entity::find_by_id(id)
-        .filter(crate::isolates::db::Column::IsPrivate.eq(false))
+    let isolate = match crate::isolates::db::Entity::find_by_id(id)
         .one(&db)
         .await
     {
@@ -130,5 +132,13 @@ pub async fn get_one(
         }
     };
 
-    Ok(Json(PublicIsolate::from(obj)))
+    // Check isolate privacy
+    if isolate.is_private {
+        return Err((StatusCode::NOT_FOUND, Json("Not Found".to_string())));
+    }
+
+    // Check parent replicate/site/area privacy
+    super::privacy::check_replicate_ancestry_public(&db, isolate.site_replicate_id).await?;
+
+    Ok(Json(PublicIsolate::from(isolate)))
 }
