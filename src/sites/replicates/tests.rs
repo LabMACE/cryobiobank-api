@@ -1,6 +1,3 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use axum::{
     body::{to_bytes, Body},
     http::{Request, StatusCode},
@@ -8,13 +5,14 @@ use axum::{
 use serde_json::json;
 use tower::ServiceExt;
 
+use crate::test_utils::{build_app_with_db, setup_clean_db};
+
 #[tokio::test]
 #[ignore]
 async fn create_site_replicate_valid() {
-    let db = common::setup_clean_db().await;
-    let app = common::build_app_with_db(db.clone());
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db.clone());
 
-    // Create a parent site.
     let create_site_payload = json!({
         "name": "Prabe_S1",
         "latitude_4326": 46.27095,
@@ -35,7 +33,6 @@ async fn create_site_replicate_valid() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    // Valid site replicate.
     let create_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T",
@@ -54,10 +51,9 @@ async fn create_site_replicate_valid() {
 #[tokio::test]
 #[ignore]
 async fn create_site_replicate_invalid_date() {
-    let db = common::setup_clean_db().await;
-    let app = common::build_app_with_db(db.clone());
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db.clone());
 
-    // Create a parent site.
     let create_site_payload = json!({
         "name": "Prabe_S2",
         "latitude_4326": 46.27095,
@@ -78,11 +74,10 @@ async fn create_site_replicate_invalid_date() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    // Try to create a site replicate with an invalid sampling_date.
     let create_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T_Invalid",
-        "sampling_date": "2023-02-30"  // February 30 is invalid.
+        "sampling_date": "2023-02-30"
     });
     let request = Request::builder()
         .method("POST")
@@ -97,10 +92,9 @@ async fn create_site_replicate_invalid_date() {
 #[tokio::test]
 #[ignore]
 async fn test_site_replicates_invalid_data() {
-    let db = common::setup_clean_db().await;
-    let app = common::build_app_with_db(db.clone());
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db.clone());
 
-    // Create a valid parent Site first.
     let create_site_payload = json!({
         "name": "Parent_Site",
         "latitude_4326": 46.27095,
@@ -119,11 +113,10 @@ async fn test_site_replicates_invalid_data() {
     let site: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    // Test an invalid sampling_date (e.g. "2023-02-30" is not a valid date)
     let invalid_date_payload = json!({
         "site_id": site_id,
         "name": "Replicate_Invalid_Date",
-        "sampling_date": "2023-02-30"  // invalid date
+        "sampling_date": "2023-02-30"
     });
     let request = Request::builder()
         .method("POST")
@@ -134,7 +127,6 @@ async fn test_site_replicates_invalid_data() {
     let response = app.clone().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    // Test missing required field (e.g. missing "sampling_date")
     let missing_field_payload = json!({
         "site_id": site_id,
         "name": "Replicate_Missing_Date"

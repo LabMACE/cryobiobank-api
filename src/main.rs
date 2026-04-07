@@ -6,6 +6,8 @@ mod isolates;
 mod middleware;
 mod samples;
 mod sites;
+#[cfg(test)]
+mod test_utils;
 
 use axum::{routing::get, Router};
 use axum_keycloak_auth::{instance::KeycloakAuthInstance, instance::KeycloakConfig, Url};
@@ -73,46 +75,35 @@ async fn run() {
         .with_state(db.clone())
         .nest(
             "/api/sites",
-            sites::db::Site::router(&db.clone())
-                .layer(axum::middleware::from_fn(middleware::scope_sites))
-                .layer(keycloak_pass_layer.clone())
-                .into(),
+            Router::from(sites::db::Site::router(&db.clone()))
+                .layer(axum::middleware::from_fn(middleware::scope_sites)),
         )
         .nest(
             "/api/site_replicates",
-            sites::replicates::db::SiteReplicate::router(&db.clone())
-                .layer(axum::middleware::from_fn(middleware::scope_site_replicates))
-                .layer(keycloak_pass_layer.clone())
-                .into(),
+            Router::from(sites::replicates::db::SiteReplicate::router(&db.clone()))
+                .layer(axum::middleware::from_fn(middleware::scope_site_replicates)),
         )
         .nest(
             "/api/samples",
-            samples::db::Sample::router(&db.clone())
-                .layer(axum::middleware::from_fn(middleware::scope_samples))
-                .layer(keycloak_pass_layer.clone())
-                .into(),
+            Router::from(samples::db::Sample::router(&db.clone()))
+                .layer(axum::middleware::from_fn(middleware::scope_samples)),
         )
         .nest(
             "/api/isolates",
-            isolates::db::Isolate::router(&db.clone())
-                .layer(axum::middleware::from_fn(middleware::scope_isolates))
-                .layer(keycloak_pass_layer.clone())
-                .into(),
+            Router::from(isolates::db::Isolate::router(&db.clone()))
+                .layer(axum::middleware::from_fn(middleware::scope_isolates)),
         )
         .nest(
             "/api/dna",
-            dna::db::DNA::router(&db.clone())
-                .layer(axum::middleware::from_fn(middleware::scope_dna))
-                .layer(keycloak_pass_layer.clone())
-                .into(),
+            Router::from(dna::db::DNA::router(&db.clone()))
+                .layer(axum::middleware::from_fn(middleware::scope_dna)),
         )
         .nest(
             "/api/areas",
-            areas::db::Area::router(&db.clone())
-                .layer(axum::middleware::from_fn(middleware::scope_areas))
-                .layer(keycloak_pass_layer)
-                .into(),
-        );
+            Router::from(areas::db::Area::router(&db.clone()))
+                .layer(axum::middleware::from_fn(middleware::scope_areas)),
+        )
+        .layer(keycloak_pass_layer);
 
     let addr: std::net::SocketAddr = "0.0.0.0:3000".parse().unwrap();
     println!("Listening on {}", addr);

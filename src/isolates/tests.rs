@@ -1,6 +1,3 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use axum::{
     body::{to_bytes, Body},
     http::{Request, StatusCode},
@@ -8,13 +5,14 @@ use axum::{
 use serde_json::json;
 use tower::ServiceExt;
 
+use crate::test_utils::{build_app_with_db, setup_clean_db};
+
 #[tokio::test]
 #[ignore]
 async fn create_isolate_valid() {
-    let db = common::setup_clean_db().await;
-    let app = common::build_app_with_db(db.clone());
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db.clone());
 
-    // Create parent site.
     let create_site_payload = json!({
         "name": "2",
         "latitude_4326": 46.27095,
@@ -35,7 +33,6 @@ async fn create_isolate_valid() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    // Create parent site replicate.
     let create_replicate_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T",
@@ -55,7 +52,6 @@ async fn create_isolate_valid() {
     let replicate: serde_json::Value = serde_json::from_slice(&replicate_body).unwrap();
     let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
 
-    // Create a valid isolate.
     let create_payload = json!({
         "name": "Isolate A",
         "site_replicate_id": replicate_id,
@@ -80,10 +76,9 @@ async fn create_isolate_valid() {
 #[tokio::test]
 #[ignore]
 async fn test_isolates_invalid_data() {
-    let db = common::setup_clean_db().await;
-    let app = common::build_app_with_db(db.clone());
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db.clone());
 
-    // Create valid parent Site and Site Replicate.
     let create_site_payload = json!({
         "name": "Isolate_Parent_Site",
         "latitude_4326": 46.27095,
@@ -117,14 +112,13 @@ async fn test_isolates_invalid_data() {
     let replicate: serde_json::Value = serde_json::from_slice(&rep_bytes).unwrap();
     let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
 
-    // Test invalid temperature_of_isolation (string instead of a number)
     let invalid_temp_payload = json!({
         "name": "Isolate_Invalid_Temp",
         "site_replicate_id": replicate_id,
         "sample_type": "Snow",
         "taxonomy": "Pseudomonas",
         "photo": "",
-        "temperature_of_isolation": "hot",  // invalid
+        "temperature_of_isolation": "hot",
         "media_used_for_isolation": "M9",
         "storage_location": "Isolates: Test",
         "genome_url": null
@@ -138,7 +132,6 @@ async fn test_isolates_invalid_data() {
     let response = app.clone().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    // Test invalid site_replicate_id (malformed UUID)
     let invalid_uuid_payload = json!({
         "name": "Isolate_Invalid_UUID",
         "site_replicate_id": "not-a-uuid",
@@ -160,15 +153,12 @@ async fn test_isolates_invalid_data() {
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-// Test that images can be added to isolates, and that they are returned only
-// in get one but not get all
 #[tokio::test]
 #[ignore]
 async fn test_isolate_images() {
-    let db = common::setup_clean_db().await;
-    let app = common::build_app_with_db(db.clone());
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db.clone());
 
-    // Create parent site.
     let create_site_payload = json!({
         "name": "Prabe_S2",
         "latitude_4326": 46.27095,
@@ -189,7 +179,6 @@ async fn test_isolate_images() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    // Create parent site replicate.
     let create_replicate_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T2",
@@ -209,7 +198,6 @@ async fn test_isolate_images() {
     let replicate: serde_json::Value = serde_json::from_slice(&replicate_body).unwrap();
     let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
 
-    // Create a valid isolate.
     let create_payload = json!({
         "name": "Isolate B",
         "site_replicate_id": replicate_id,
@@ -233,34 +221,25 @@ async fn test_isolate_images() {
     let isolate: serde_json::Value = serde_json::from_slice(&isolate_body).unwrap();
     let isolate_id = isolate.get("id").unwrap().as_str().unwrap();
 
-    // Add an image to the isolate
     let image_payload = json!({
         "photo": "data:image/png;base64,abc123"
     });
     let request = Request::builder()
         .method("PUT")
-        .uri(format!(
-            "/api/isolates/{isolate_id}",
-            isolate_id = isolate_id
-        ))
+        .uri(format!("/api/isolates/{isolate_id}"))
         .header("Content-Type", "application/json")
         .body(Body::from(image_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
-    // Get the isolate
     let request = Request::builder()
         .method("GET")
         .uri(format!("/api/isolates/{}", isolate_id))
         .body(Body::empty())
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(
-        response.status(),
-        StatusCode::OK,
-        "Failed to get one isolate"
-    );
+    assert_eq!(response.status(), StatusCode::OK, "Failed to get one isolate");
     let isolate_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
     let isolate: serde_json::Value = serde_json::from_slice(&isolate_body).unwrap();
     let photo = isolate.get("photo").unwrap();
@@ -270,18 +249,13 @@ async fn test_isolate_images() {
         "Photo should be returned in get one"
     );
 
-    // Get all isolates
     let request = Request::builder()
         .method("GET")
         .uri("/api/isolates")
         .body(Body::empty())
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(
-        response.status(),
-        StatusCode::OK,
-        "Failed to get all isolates"
-    );
+    assert_eq!(response.status(), StatusCode::OK, "Failed to get all isolates");
     let isolates_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
     let isolates: serde_json::Value = serde_json::from_slice(&isolates_body).unwrap();
     let isolates = isolates.as_array().unwrap();

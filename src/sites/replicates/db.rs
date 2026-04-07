@@ -98,6 +98,12 @@ pub struct Model {
     #[sea_orm(ignore)]
     #[crudcrate(non_db_attr, exclude(create, update))]
     pub dna_count: Option<i64>,
+    #[sea_orm(ignore)]
+    #[crudcrate(non_db_attr, join(one, all))]
+    pub samples: Vec<crate::samples::db::Sample>,
+    #[sea_orm(ignore)]
+    #[crudcrate(non_db_attr, join(one, all))]
+    pub isolates: Vec<crate::isolates::db::Isolate>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -110,6 +116,10 @@ pub enum Relation {
     Site,
     #[sea_orm(has_many = "crate::dna::db::Entity")]
     DNA,
+    #[sea_orm(has_many = "crate::samples::db::Entity")]
+    Samples,
+    #[sea_orm(has_many = "crate::isolates::db::Entity")]
+    Isolates,
 }
 
 impl Related<crate::sites::db::Entity> for Entity {
@@ -123,4 +133,17 @@ impl Related<crate::dna::db::Entity> for Entity {
         Relation::DNA.def()
     }
 }
+
+impl Related<crate::samples::db::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Samples.def()
+    }
+}
+
+impl Related<crate::isolates::db::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Isolates.def()
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}

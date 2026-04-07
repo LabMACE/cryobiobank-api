@@ -1,6 +1,3 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use axum::{
     body::{to_bytes, Body},
     http::{Request, StatusCode},
@@ -8,13 +5,14 @@ use axum::{
 use serde_json::json;
 use tower::ServiceExt;
 
+use crate::test_utils::{build_app_with_db, setup_clean_db};
+
 #[tokio::test]
 #[ignore]
 async fn create_dna_valid() {
-    let db = common::setup_clean_db().await;
-    let app = common::build_app_with_db(db.clone());
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db.clone());
 
-    // Create parent site.
     let create_site_payload = json!({
         "name": "DNA_Parent_Site",
         "latitude_4326": 46.27095,
@@ -33,7 +31,6 @@ async fn create_dna_valid() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    // Create parent site replicate.
     let create_replicate_payload = json!({
         "site_id": site_id,
         "name": "DNA_Replicate",
@@ -70,10 +67,9 @@ async fn create_dna_valid() {
 #[tokio::test]
 #[ignore]
 async fn test_dna_duplicate_name() {
-    let db = common::setup_clean_db().await;
-    let app = common::build_app_with_db(db.clone());
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db.clone());
 
-    // Create parent site.
     let create_site_payload = json!({
         "name": "DNA_Dup_Site",
         "latitude_4326": 46.27095,
@@ -92,7 +88,6 @@ async fn test_dna_duplicate_name() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    // Create parent site replicate.
     let create_replicate_payload = json!({
         "site_id": site_id,
         "name": "DNA_Dup_Replicate",
@@ -116,7 +111,6 @@ async fn test_dna_duplicate_name() {
         "extraction_method": "Genomic DNA",
         "site_replicate_id": replicate_id
     });
-    // First creation should succeed.
     let request = Request::builder()
         .method("POST")
         .uri("/api/dna")
@@ -126,7 +120,6 @@ async fn test_dna_duplicate_name() {
     let response = app.clone().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::CREATED);
 
-    // Second creation with the same name should fail.
     let request = Request::builder()
         .method("POST")
         .uri("/api/dna")

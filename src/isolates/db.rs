@@ -11,7 +11,8 @@ use uuid::Uuid;
     name_singular = "isolate",
     name_plural = "isolates",
     description = "Biological isolates with photos and metadata from sample collection sites",
-    no_eq
+    no_eq,
+    derive_partial_eq
 )]
 pub struct Model {
     #[sea_orm(primary_key)]

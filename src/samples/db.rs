@@ -10,7 +10,8 @@ use uuid::Uuid;
     api_struct = "Sample",
     name_singular = "sample",
     name_plural = "samples",
-    description = "Sample collection records from site replicates with associated DNA"
+    description = "Sample collection records from site replicates with associated DNA",
+    derive_partial_eq
 )]
 pub struct Model {
     #[sea_orm(primary_key)]
