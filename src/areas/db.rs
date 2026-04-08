@@ -3,7 +3,7 @@ use sea_orm::entity::prelude::*;
 use sea_orm::{Condition, DatabaseConnection, Order, QueryOrder, QuerySelect};
 use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, EntityToModels)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, EntityToModels)]
 #[sea_orm(table_name = "areas")]
 #[crudcrate(
     generate_router,
@@ -29,6 +29,9 @@ pub struct Model {
     #[sea_orm(ignore)]
     #[crudcrate(non_db_attr)]
     pub geom: Option<serde_json::Value>,
+    #[sea_orm(ignore)]
+    #[crudcrate(non_db_attr, join(one, depth = 1))]
+    pub sites: Vec<crate::sites::db::Site>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

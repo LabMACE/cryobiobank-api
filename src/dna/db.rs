@@ -10,7 +10,8 @@ use uuid::Uuid;
     name_singular = "dna",
     name_plural = "dna",
     description = "DNA extraction and analysis records for biological samples",
-    no_eq
+    no_eq,
+    derive_partial_eq
 )]
 pub struct Model {
     #[sea_orm(primary_key)]

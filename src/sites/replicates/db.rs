@@ -99,11 +99,14 @@ pub struct Model {
     #[crudcrate(non_db_attr, exclude(create, update))]
     pub dna_count: Option<i64>,
     #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr, join(one, all))]
+    #[crudcrate(non_db_attr, join(one, all, depth = 1))]
     pub samples: Vec<crate::samples::db::Sample>,
     #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr, join(one, all))]
+    #[crudcrate(non_db_attr, join(one, all, depth = 1))]
     pub isolates: Vec<crate::isolates::db::Isolate>,
+    #[sea_orm(ignore)]
+    #[crudcrate(non_db_attr, join(one, all, depth = 1))]
+    pub dna: Vec<crate::dna::db::DNA>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
