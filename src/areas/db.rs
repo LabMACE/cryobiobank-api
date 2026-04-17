@@ -30,7 +30,7 @@ pub struct Model {
     #[crudcrate(non_db_attr)]
     pub geom: Option<serde_json::Value>,
     #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr, join(one, depth = 1))]
+    #[crudcrate(non_db_attr, join(one, depth = 2))]
     pub sites: Vec<crate::sites::db::Site>,
 }
 
