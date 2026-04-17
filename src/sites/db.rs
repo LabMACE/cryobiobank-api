@@ -40,7 +40,11 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "crate::sites::replicates::db::Entity")]
     SiteReplicates,
-    #[sea_orm(has_one = "crate::areas::db::Entity")]
+    #[sea_orm(
+        belongs_to = "crate::areas::db::Entity",
+        from = "Column::AreaId",
+        to = "crate::areas::db::Column::Id"
+    )]
     Area,
 }
 
