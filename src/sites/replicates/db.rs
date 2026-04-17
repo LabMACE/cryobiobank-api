@@ -90,15 +90,6 @@ pub struct Model {
     #[crudcrate(sortable, filterable, fulltext)]
     pub metagenome_url: Option<String>,
     #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr, exclude(create, update))]
-    pub sample_count: Option<i64>,
-    #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr, exclude(create, update))]
-    pub isolate_count: Option<i64>,
-    #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr, exclude(create, update))]
-    pub dna_count: Option<i64>,
-    #[sea_orm(ignore)]
     #[crudcrate(non_db_attr, join(one, all, depth = 1))]
     pub samples: Vec<crate::samples::db::Sample>,
     #[sea_orm(ignore)]

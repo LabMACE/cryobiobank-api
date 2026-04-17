@@ -1,7 +1,5 @@
-use crudcrate::{ApiError, CRUDResource, EntityToModels};
+use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
-use sea_orm::{DatabaseConnection, DbBackend, Statement};
-use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, EntityToModels)]
@@ -12,7 +10,6 @@ use uuid::Uuid;
     name_singular = "site",
     name_plural = "sites",
     description = "Collection sites with coordinates and associated site replicates",
-    read::one::body = get_one_site_with_counts,
     no_eq,
     derive_partial_eq
 )]
@@ -60,82 +57,3 @@ impl Related<crate::areas::db::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
-
-pub(super) async fn get_one_site_with_counts(
-    db: &DatabaseConnection,
-    id: Uuid,
-) -> Result<Site, ApiError> {
-    use crate::sites::replicates::db::{Entity as ReplicateEntity, SiteReplicate};
-
-    let model = Entity::find_by_id(id)
-        .one(db)
-        .await?
-        .ok_or_else(|| ApiError::not_found("site", Some(id.to_string())))?;
-
-    let replicate_models = model
-        .find_related(ReplicateEntity)
-        .all(db)
-        .await?;
-
-    let replicate_ids: Vec<Uuid> = replicate_models.iter().map(|r| r.id).collect();
-
-    let counts = get_replicate_counts(db, &replicate_ids).await?;
-
-    let replicates: Vec<SiteReplicate> = replicate_models
-        .into_iter()
-        .map(|m| {
-            let (sc, ic, dc) = counts.get(&m.id).copied().unwrap_or((0, 0, 0));
-            let mut rep = SiteReplicate::from(m);
-            rep.sample_count = Some(sc);
-            rep.isolate_count = Some(ic);
-            rep.dna_count = Some(dc);
-            rep
-        })
-        .collect();
-
-    let mut site = Site::from(model);
-    site.replicates = replicates;
-    Ok(site)
-}
-
-async fn get_replicate_counts(
-    db: &DatabaseConnection,
-    replicate_ids: &[Uuid],
-) -> Result<HashMap<Uuid, (i64, i64, i64)>, ApiError> {
-    let mut result = HashMap::new();
-
-    if replicate_ids.is_empty() {
-        return Ok(result);
-    }
-
-    let raw_sql = r#"
-        SELECT sr.id,
-            COUNT(DISTINCT s.id) AS sample_count,
-            COUNT(DISTINCT i.id) AS isolate_count,
-            COUNT(DISTINCT d.id) AS dna_count
-        FROM site_replicates sr
-        LEFT JOIN samples s ON s.site_replicate_id = sr.id
-        LEFT JOIN isolates i ON i.site_replicate_id = sr.id
-        LEFT JOIN dna d ON d.site_replicate_id = sr.id
-        WHERE sr.id = ANY($1)
-        GROUP BY sr.id
-    "#;
-
-    let rows = db
-        .query_all(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            raw_sql,
-            vec![replicate_ids.to_vec().into()],
-        ))
-        .await?;
-
-    for row in rows {
-        let id: Uuid = row.try_get("", "id")?;
-        let sample_count: i64 = row.try_get("", "sample_count")?;
-        let isolate_count: i64 = row.try_get("", "isolate_count")?;
-        let dna_count: i64 = row.try_get("", "dna_count")?;
-        result.insert(id, (sample_count, isolate_count, dna_count));
-    }
-
-    Ok(result)
-}
