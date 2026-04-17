@@ -5,6 +5,7 @@ mod dna;
 mod isolates;
 mod middleware;
 mod samples;
+mod search;
 mod sites;
 #[cfg(test)]
 mod test_utils;
@@ -103,6 +104,7 @@ async fn run() {
             Router::from(areas::db::Area::router(&db.clone()))
                 .layer(axum::middleware::from_fn(middleware::scope_areas)),
         )
+        .route("/api/search", get(search::search).with_state(db.clone()))
         .layer(keycloak_pass_layer);
 
     let addr: std::net::SocketAddr = "0.0.0.0:3000".parse().unwrap();

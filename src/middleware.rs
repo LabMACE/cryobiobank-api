@@ -11,7 +11,7 @@ use crate::common::auth::Role;
 
 type AuthStatus = axum_keycloak_auth::KeycloakAuthStatus<Role, axum_keycloak_auth::decode::ProfileAndEmail>;
 
-fn is_admin(req: &Request) -> bool {
+pub fn is_admin(req: &Request) -> bool {
     req.extensions()
         .get::<AuthStatus>()
         .map(|s| matches!(s, axum_keycloak_auth::KeycloakAuthStatus::Success(_)))
@@ -33,52 +33,6 @@ fn check_write_access(req: &Request) -> Option<Response> {
     }
 }
 
-/// Areas: `is_private = false`
-pub async fn scope_areas(mut req: Request, next: Next) -> Response {
-    if let Some(r) = check_write_access(&req) { return r; }
-    if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(
-            Condition::all().add(crate::areas::db::Column::IsPrivate.eq(false)),
-        ));
-    }
-    next.run(req).await
-}
-
-/// Sites: `is_private = false AND (area_id IS NULL OR area not private)`
-pub async fn scope_sites(mut req: Request, next: Next) -> Response {
-    if let Some(r) = check_write_access(&req) { return r; }
-    if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(
-            Condition::all()
-                .add(crate::sites::db::Column::IsPrivate.eq(false))
-                .add(Expr::cust(
-                    "(area_id IS NULL OR area_id NOT IN (SELECT id FROM areas WHERE is_private = true))",
-                )),
-        ));
-    }
-    next.run(req).await
-}
-
-/// Site replicates: `is_private = false AND site is public (with area check)`
-pub async fn scope_site_replicates(mut req: Request, next: Next) -> Response {
-    if let Some(r) = check_write_access(&req) { return r; }
-    if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(
-            Condition::all()
-                .add(crate::sites::replicates::db::Column::IsPrivate.eq(false))
-                .add(Expr::cust(
-                    "site_id IN (\
-                        SELECT s.id FROM sites s \
-                        LEFT JOIN areas a ON s.area_id = a.id \
-                        WHERE s.is_private = false \
-                        AND (a.id IS NULL OR a.is_private = false)\
-                    )",
-                )),
-        ));
-    }
-    next.run(req).await
-}
-
 const REPLICATE_SUBQUERY: &str = "\
     site_replicate_id IN (\
         SELECT sr.id FROM site_replicates sr \
@@ -88,15 +42,81 @@ const REPLICATE_SUBQUERY: &str = "\
         AND (a.id IS NULL OR a.is_private = false)\
     )";
 
+pub fn areas_scope() -> Condition {
+    Condition::all().add(crate::areas::db::Column::IsPrivate.eq(false))
+}
+
+pub fn sites_scope() -> Condition {
+    Condition::all()
+        .add(crate::sites::db::Column::IsPrivate.eq(false))
+        .add(Expr::cust(
+            "(area_id IS NULL OR area_id NOT IN (SELECT id FROM areas WHERE is_private = true))",
+        ))
+}
+
+pub fn site_replicates_scope() -> Condition {
+    Condition::all()
+        .add(crate::sites::replicates::db::Column::IsPrivate.eq(false))
+        .add(Expr::cust(
+            "site_id IN (\
+                SELECT s.id FROM sites s \
+                LEFT JOIN areas a ON s.area_id = a.id \
+                WHERE s.is_private = false \
+                AND (a.id IS NULL OR a.is_private = false)\
+            )",
+        ))
+}
+
+pub fn samples_scope() -> Condition {
+    Condition::all()
+        .add(crate::samples::db::Column::IsPrivate.eq(false))
+        .add(Expr::cust(REPLICATE_SUBQUERY))
+}
+
+pub fn isolates_scope() -> Condition {
+    Condition::all()
+        .add(crate::isolates::db::Column::IsPrivate.eq(false))
+        .add(Expr::cust(REPLICATE_SUBQUERY))
+}
+
+pub fn dna_scope() -> Condition {
+    Condition::all()
+        .add(crate::dna::db::Column::IsPrivate.eq(false))
+        .add(Expr::cust(REPLICATE_SUBQUERY))
+}
+
+/// Areas: `is_private = false`
+pub async fn scope_areas(mut req: Request, next: Next) -> Response {
+    if let Some(r) = check_write_access(&req) { return r; }
+    if !is_admin(&req) {
+        req.extensions_mut().insert(ScopeCondition::new(areas_scope()));
+    }
+    next.run(req).await
+}
+
+/// Sites: `is_private = false AND (area_id IS NULL OR area not private)`
+pub async fn scope_sites(mut req: Request, next: Next) -> Response {
+    if let Some(r) = check_write_access(&req) { return r; }
+    if !is_admin(&req) {
+        req.extensions_mut().insert(ScopeCondition::new(sites_scope()));
+    }
+    next.run(req).await
+}
+
+/// Site replicates: `is_private = false AND site is public (with area check)`
+pub async fn scope_site_replicates(mut req: Request, next: Next) -> Response {
+    if let Some(r) = check_write_access(&req) { return r; }
+    if !is_admin(&req) {
+        req.extensions_mut().insert(ScopeCondition::new(site_replicates_scope()));
+    }
+    next.run(req).await
+}
+
 /// Samples: `is_private = false AND replicate/site/area chain is public`
 pub async fn scope_samples(mut req: Request, next: Next) -> Response {
     if let Some(r) = check_write_access(&req) { return r; }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(
-            Condition::all()
-                .add(crate::samples::db::Column::IsPrivate.eq(false))
-                .add(Expr::cust(REPLICATE_SUBQUERY)),
-        ));
+        req.extensions_mut().insert(ScopeCondition::new(samples_scope()));
     }
     next.run(req).await
 }
@@ -105,11 +125,7 @@ pub async fn scope_samples(mut req: Request, next: Next) -> Response {
 pub async fn scope_isolates(mut req: Request, next: Next) -> Response {
     if let Some(r) = check_write_access(&req) { return r; }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(
-            Condition::all()
-                .add(crate::isolates::db::Column::IsPrivate.eq(false))
-                .add(Expr::cust(REPLICATE_SUBQUERY)),
-        ));
+        req.extensions_mut().insert(ScopeCondition::new(isolates_scope()));
     }
     next.run(req).await
 }
@@ -118,11 +134,7 @@ pub async fn scope_isolates(mut req: Request, next: Next) -> Response {
 pub async fn scope_dna(mut req: Request, next: Next) -> Response {
     if let Some(r) = check_write_access(&req) { return r; }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(
-            Condition::all()
-                .add(crate::dna::db::Column::IsPrivate.eq(false))
-                .add(Expr::cust(REPLICATE_SUBQUERY)),
-        ));
+        req.extensions_mut().insert(ScopeCondition::new(dna_scope()));
     }
     next.run(req).await
 }
