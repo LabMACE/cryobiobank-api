@@ -36,6 +36,7 @@ async fn create_site_replicate_valid() {
     let create_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T",
+        "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
     let request = Request::builder()
@@ -77,6 +78,7 @@ async fn create_site_replicate_invalid_date() {
     let create_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T_Invalid",
+        "sample_type": "Snow",
         "sampling_date": "2023-02-30"
     });
     let request = Request::builder()
@@ -116,6 +118,7 @@ async fn test_site_replicates_invalid_data() {
     let invalid_date_payload = json!({
         "site_id": site_id,
         "name": "Replicate_Invalid_Date",
+        "sample_type": "Snow",
         "sampling_date": "2023-02-30"
     });
     let request = Request::builder()

@@ -314,22 +314,25 @@ mod tests {
         let site_id = site["id"].as_str().unwrap();
 
         let (_, replicate) = admin_create(&admin, "/api/site_replicates", json!({
-            "name": "Replicate 1", "site_id": site_id, "is_private": false
+            "name": "Replicate 1", "site_id": site_id,
+            "sample_type": "Snow",
+            "sampling_date": "2024-06-01",
+            "is_private": false
         })).await;
         let replicate_id = replicate["id"].as_str().unwrap();
 
-        let (_, sample) = admin_create(&admin, "/api/samples", json!({
+        let (s, _) = admin_create(&admin, "/api/samples", json!({
             "name": "Sample 1", "site_replicate_id": replicate_id, "is_private": false
         })).await;
-        let sample_id = sample["id"].as_str().unwrap();
+        assert_eq!(s, StatusCode::CREATED);
 
-        let (_, isolate) = admin_create(&admin, "/api/isolates", json!({
-            "name": "Isolate 1", "sample_id": sample_id, "is_private": false
+        let (s, _) = admin_create(&admin, "/api/isolates", json!({
+            "name": "Isolate 1", "site_replicate_id": replicate_id, "is_private": false
         })).await;
-        let isolate_id = isolate["id"].as_str().unwrap();
+        assert_eq!(s, StatusCode::CREATED);
 
         let (s, _) = admin_create(&admin, "/api/dna", json!({
-            "name": "DNA 1", "isolate_id": isolate_id, "is_private": false
+            "name": "DNA 1", "site_replicate_id": replicate_id, "is_private": false
         })).await;
         assert_eq!(s, StatusCode::CREATED);
 
@@ -360,6 +363,7 @@ mod tests {
 
         let (s, replicate) = admin_create(app, "/api/site_replicates", json!({
             "name": "PubReplicate", "site_id": site_id,
+            "sample_type": "Snow",
             "sampling_date": "2024-06-01",
             "is_private": false
         })).await;
@@ -377,7 +381,6 @@ mod tests {
             let (s, _) = admin_create(app, "/api/isolates", json!({
                 "name": format!("isolate-{suffix}"),
                 "site_replicate_id": replicate_id,
-                "sample_type": "sediment",
                 "is_private": is_private
             })).await;
             assert_eq!(s, StatusCode::CREATED);

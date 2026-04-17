@@ -36,6 +36,7 @@ async fn create_isolate_valid() {
     let create_replicate_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T",
+        "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
     let replicate_request = Request::builder()
@@ -55,7 +56,6 @@ async fn create_isolate_valid() {
     let create_payload = json!({
         "name": "Isolate A",
         "site_replicate_id": replicate_id,
-        "sample_type": "Snow",
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": 20.5,
@@ -99,6 +99,7 @@ async fn test_isolates_invalid_data() {
     let create_replicate_payload = json!({
         "site_id": site_id,
         "name": "Isolate_Replicate",
+        "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
     let request = Request::builder()
@@ -115,7 +116,6 @@ async fn test_isolates_invalid_data() {
     let invalid_temp_payload = json!({
         "name": "Isolate_Invalid_Temp",
         "site_replicate_id": replicate_id,
-        "sample_type": "Snow",
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": "hot",
@@ -135,7 +135,6 @@ async fn test_isolates_invalid_data() {
     let invalid_uuid_payload = json!({
         "name": "Isolate_Invalid_UUID",
         "site_replicate_id": "not-a-uuid",
-        "sample_type": "Snow",
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": 20.5,
@@ -182,6 +181,7 @@ async fn test_isolate_images() {
     let create_replicate_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T2",
+        "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
     let replicate_request = Request::builder()
@@ -201,7 +201,6 @@ async fn test_isolate_images() {
     let create_payload = json!({
         "name": "Isolate B",
         "site_replicate_id": replicate_id,
-        "sample_type": "Snow",
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": 20.5,

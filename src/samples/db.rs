@@ -1,4 +1,3 @@
-use crate::common::enums::SampleType;
 use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
 use uuid::Uuid;
@@ -23,12 +22,11 @@ pub struct Model {
     #[crudcrate(sortable, filterable, fulltext)]
     pub name: String,
 
-    #[sea_orm(column_name = "sample_type")]
-    #[crudcrate(sortable, filterable)]
-    pub sample_type: SampleType,
-    #[crudcrate(sortable, filterable, fulltext)]
+    #[crudcrate(sortable, filterable, on_create = true)]
+    pub is_available: bool,
+    #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
     pub storage_location: Option<String>,
-    #[crudcrate(sortable, filterable, fulltext)]
+    #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
     pub description: Option<String>,
     #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,

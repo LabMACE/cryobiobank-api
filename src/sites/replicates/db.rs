@@ -1,3 +1,4 @@
+use crate::common::enums::SampleType;
 use chrono::NaiveDate;
 use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
@@ -25,6 +26,10 @@ pub struct Model {
     #[crudcrate(sortable, filterable, fulltext)]
     pub name: String,
 
+    #[sea_orm(column_name = "sample_type")]
+    #[crudcrate(sortable, filterable)]
+    pub sample_type: SampleType,
+
     #[crudcrate(sortable, filterable)]
     pub sampling_date: NaiveDate,
     #[crudcrate(sortable, filterable)]
@@ -35,55 +40,55 @@ pub struct Model {
     pub air_temperature_celsius: Option<f64>,
     #[crudcrate(sortable, filterable)]
     pub snow_temperature_celsius: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub photosynthetic_active_radiation: Option<i32>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub bacterial_abundance: Option<i64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub cfu_count_r2a: Option<i32>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub cfu_count_another: Option<i32>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ph: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_fluoride: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_chloride: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_nitrite: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_nitrate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_bromide: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_sulfate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_phosphate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_sodium: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_ammonium: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_potassium: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_magnesium: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub ions_calcium: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub organic_acids_formate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub organic_acids_malate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub organic_acids_propionate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub organic_acids_citrate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub organic_acids_lactate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub organic_acids_butyrate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub organic_acids_oxalate: Option<f64>,
-    #[crudcrate(sortable, filterable)]
+    #[crudcrate(sortable, filterable, exclude(scoped))]
     pub organic_acids_acetate: Option<f64>,
     #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,

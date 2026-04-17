@@ -20,9 +20,9 @@ pub struct Model {
     #[sea_orm(unique)]
     #[crudcrate(sortable, filterable, fulltext)]
     pub name: String,
-    #[crudcrate(sortable, filterable, fulltext)]
+    #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
     pub description: Option<String>,
-    #[crudcrate(sortable, filterable, fulltext)]
+    #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
     pub extraction_method: Option<String>,
     #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,
