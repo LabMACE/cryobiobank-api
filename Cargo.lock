@@ -632,6 +632,8 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 [[package]]
 name = "crudcrate"
 version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b2fe280a6a61a64118efbca3e304a07c1ce294d45fd542867b1bc4ebced8da8"
 dependencies = [
  "async-trait",
  "axum",
@@ -650,6 +652,8 @@ dependencies = [
 [[package]]
 name = "crudcrate-derive"
 version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d457f022b8a327159cb6c842c3f904f762f59c360936d07f0520c7f30c637226"
 dependencies = [
  "convert_case",
  "heck 0.5.0",
@@ -660,7 +664,7 @@ dependencies = [
 
 [[package]]
 name = "cryobiobank-api"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "async-trait",
  "axum",

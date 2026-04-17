@@ -340,4 +340,190 @@ mod tests {
             assert!(items.is_empty(), "GET {endpoint} should return empty list when root area is private, got {} items", items.len());
         }
     }
+
+    /// Seeds a public site + public replicate with one public and one private
+    /// row in each of samples/isolates/dna and returns the replicate id.
+    ///
+    /// The public site_replicate is the parent for all children. We avoid the
+    /// site/area chain here because we want the scope to succeed at the
+    /// replicate level, forcing the scoped batch loader to produce rows — if
+    /// the chain filters the replicate out, the whole join is empty and the
+    /// test proves nothing.
+    async fn seed_replicate_with_mixed_children(app: &axum::Router) -> String {
+        let (s, site) = admin_create(app, "/api/sites", json!({
+            "name": "PubSite",
+            "latitude_4326": 46.0, "longitude_4326": 7.0, "elevation_metres": 1000.0,
+            "is_private": false
+        })).await;
+        assert_eq!(s, StatusCode::CREATED);
+        let site_id = site["id"].as_str().unwrap();
+
+        let (s, replicate) = admin_create(app, "/api/site_replicates", json!({
+            "name": "PubReplicate", "site_id": site_id,
+            "sampling_date": "2024-06-01",
+            "is_private": false
+        })).await;
+        assert_eq!(s, StatusCode::CREATED);
+        let replicate_id = replicate["id"].as_str().unwrap().to_string();
+
+        for (is_private, suffix) in [(false, "pub"), (true, "priv")] {
+            let (s, _) = admin_create(app, "/api/samples", json!({
+                "name": format!("sample-{suffix}"),
+                "site_replicate_id": replicate_id,
+                "is_private": is_private
+            })).await;
+            assert_eq!(s, StatusCode::CREATED);
+
+            let (s, _) = admin_create(app, "/api/isolates", json!({
+                "name": format!("isolate-{suffix}"),
+                "site_replicate_id": replicate_id,
+                "sample_type": "sediment",
+                "is_private": is_private
+            })).await;
+            assert_eq!(s, StatusCode::CREATED);
+
+            let (s, _) = admin_create(app, "/api/dna", json!({
+                "name": format!("dna-{suffix}"),
+                "site_replicate_id": replicate_id,
+                "is_private": is_private
+            })).await;
+            assert_eq!(s, StatusCode::CREATED);
+        }
+
+        replicate_id
+    }
+
+    /// Public `GET /api/site_replicates` (list): embedded samples/isolates/dna
+    /// must only contain public rows. Proves `get_all_scoped` propagates the
+    /// child scope filter through crudcrate's batch loader on the list path.
+    #[tokio::test]
+    #[ignore]
+    async fn scoped_replicate_list_excludes_private_joined_children() {
+        let db = setup_clean_db().await;
+        let admin = build_app_with_db(db.clone());
+        let scoped = build_scoped_app_with_db(db.clone());
+
+        seed_replicate_with_mixed_children(&admin).await;
+
+        let (status, body) = scoped_get(&scoped, "/api/site_replicates").await;
+        assert_eq!(status, StatusCode::OK);
+        let replicates = body.as_array().expect("response should be an array");
+        assert_eq!(replicates.len(), 1, "exactly one public replicate expected");
+        let r = &replicates[0];
+
+        for field in ["samples", "isolates", "dna"] {
+            let children = r[field].as_array()
+                .unwrap_or_else(|| panic!("expected {field} array, got {r}"));
+            assert_eq!(
+                children.len(), 1,
+                "{field}: expected only the public row in scoped list, got {} items: {children:?}",
+                children.len()
+            );
+            let name = children[0]["name"].as_str().unwrap();
+            assert!(
+                name.ends_with("-pub"),
+                "{field}: private child leaked into scoped list response (name={name})"
+            );
+        }
+    }
+
+    /// Public `GET /api/site_replicates/:id` (get_one): embedded children
+    /// must only contain public rows. Proves `get_one_scoped`'s SQL-level
+    /// child scope filter works for the Vec join at depth = 1.
+    #[tokio::test]
+    #[ignore]
+    async fn scoped_replicate_one_excludes_private_joined_children() {
+        let db = setup_clean_db().await;
+        let admin = build_app_with_db(db.clone());
+        let scoped = build_scoped_app_with_db(db.clone());
+
+        let replicate_id = seed_replicate_with_mixed_children(&admin).await;
+
+        let (status, r) = scoped_get(&scoped, &format!("/api/site_replicates/{replicate_id}")).await;
+        assert_eq!(status, StatusCode::OK);
+        for field in ["samples", "isolates", "dna"] {
+            let children = r[field].as_array()
+                .unwrap_or_else(|| panic!("expected {field} array, got {r}"));
+            assert_eq!(
+                children.len(), 1,
+                "{field}: expected only the public row in scoped get_one, got {} items",
+                children.len()
+            );
+            assert!(
+                children[0]["name"].as_str().unwrap().ends_with("-pub"),
+                "{field}: private child leaked into scoped get_one response"
+            );
+        }
+    }
+
+    /// Public `GET /api/areas/:id` (get_one at depth = 2): the sites array
+    /// must not contain any private sites. Proves that the depth > 1 branch
+    /// of the scoped join loader recurses via `get_one_scoped`, not `get_one`.
+    #[tokio::test]
+    #[ignore]
+    async fn scoped_area_one_excludes_private_grandchildren() {
+        let db = setup_clean_db().await;
+        let admin = build_app_with_db(db.clone());
+        let scoped = build_scoped_app_with_db(db.clone());
+
+        let (_, area) = admin_create(&admin, "/api/areas", json!({
+            "name": "PubArea", "description": "public", "colour": "#00ff00", "is_private": false
+        })).await;
+        let area_id = area["id"].as_str().unwrap();
+
+        let (s, _) = admin_create(&admin, "/api/sites", json!({
+            "name": "PubSiteUnderArea",
+            "latitude_4326": 46.0, "longitude_4326": 7.0, "elevation_metres": 1000.0,
+            "area_id": area_id, "is_private": false
+        })).await;
+        assert_eq!(s, StatusCode::CREATED);
+
+        let (s, _) = admin_create(&admin, "/api/sites", json!({
+            "name": "PrivSiteUnderArea",
+            "latitude_4326": 47.0, "longitude_4326": 8.0, "elevation_metres": 500.0,
+            "area_id": area_id, "is_private": true
+        })).await;
+        assert_eq!(s, StatusCode::CREATED);
+
+        let (status, area_json) = scoped_get(&scoped, &format!("/api/areas/{area_id}")).await;
+        assert_eq!(status, StatusCode::OK);
+        let sites = area_json["sites"].as_array().expect("sites array");
+        assert_eq!(
+            sites.len(), 1,
+            "expected only the public site via depth>1 scoped join, got {} entries: {sites:?}",
+            sites.len()
+        );
+        assert_eq!(sites[0]["name"], "PubSiteUnderArea");
+    }
+
+    /// Scoped response shape guard: `is_private` must be absent from every
+    /// nested child in the list response (belt-and-suspenders on top of
+    /// exclude(scoped)).
+    #[tokio::test]
+    #[ignore]
+    async fn scoped_replicate_list_is_private_absent_on_children() {
+        let db = setup_clean_db().await;
+        let admin = build_app_with_db(db.clone());
+        let scoped = build_scoped_app_with_db(db.clone());
+
+        seed_replicate_with_mixed_children(&admin).await;
+
+        let (status, body) = scoped_get(&scoped, "/api/site_replicates").await;
+        assert_eq!(status, StatusCode::OK);
+        let replicates = body.as_array().unwrap();
+        assert_eq!(replicates.len(), 1);
+        let r = &replicates[0];
+        assert!(
+            r.get("is_private").is_none(),
+            "replicate itself should not expose is_private in scoped response"
+        );
+        for field in ["samples", "isolates", "dna"] {
+            for child in r[field].as_array().unwrap() {
+                assert!(
+                    child.get("is_private").is_none(),
+                    "{field} child leaked is_private field: {child}"
+                );
+            }
+        }
+    }
 }
