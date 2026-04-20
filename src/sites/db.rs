@@ -32,7 +32,7 @@ pub struct Model {
     #[crudcrate(filterable, exclude(scoped))]
     pub is_private: bool,
     #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr, exclude(create, update), join(one, depth = 1))]
+    #[crudcrate(non_db_attr, exclude(create, update), join(one, all, depth = 2))]
     pub replicates: Vec<crate::sites::replicates::db::SiteReplicate>,
 }
 
