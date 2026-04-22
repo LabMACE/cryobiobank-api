@@ -28,9 +28,9 @@ pub struct Model {
     pub taxonomy: Option<String>,
     #[crudcrate(filterable, exclude(list))]
     pub photo: Option<String>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub temperature_of_isolation: Option<f64>,
-    #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
+    #[crudcrate(sortable, filterable, fulltext)]
     pub media_used_for_isolation: Option<String>,
     #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
     pub storage_location: Option<String>,
@@ -39,7 +39,7 @@ pub struct Model {
 
     #[crudcrate(sortable, filterable, fulltext)]
     pub genome_url: Option<String>,
-    #[crudcrate(filterable, exclude(scoped))]
+    #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
 }
 

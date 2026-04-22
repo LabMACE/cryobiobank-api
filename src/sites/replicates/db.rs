@@ -40,57 +40,57 @@ pub struct Model {
     pub air_temperature_celsius: Option<f64>,
     #[crudcrate(sortable, filterable)]
     pub snow_temperature_celsius: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub photosynthetic_active_radiation: Option<i32>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub bacterial_abundance: Option<i64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub cfu_count_r2a: Option<i32>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub cfu_count_another: Option<i32>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ph: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_fluoride: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_chloride: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_nitrite: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_nitrate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_bromide: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_sulfate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_phosphate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_sodium: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_ammonium: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_potassium: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_magnesium: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub ions_calcium: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub organic_acids_formate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub organic_acids_malate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub organic_acids_propionate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub organic_acids_citrate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub organic_acids_lactate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub organic_acids_butyrate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub organic_acids_oxalate: Option<f64>,
-    #[crudcrate(sortable, filterable, exclude(scoped))]
+    #[crudcrate(sortable, filterable)]
     pub organic_acids_acetate: Option<f64>,
-    #[crudcrate(filterable, exclude(scoped))]
+    #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
     #[crudcrate(sortable, filterable, fulltext)]
     pub metagenome_url: Option<String>,

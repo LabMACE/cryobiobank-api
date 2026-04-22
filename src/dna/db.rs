@@ -20,11 +20,11 @@ pub struct Model {
     #[sea_orm(unique)]
     #[crudcrate(sortable, filterable, fulltext)]
     pub name: String,
-    #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
+    #[crudcrate(sortable, filterable, fulltext)]
     pub description: Option<String>,
-    #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
+    #[crudcrate(sortable, filterable, fulltext)]
     pub extraction_method: Option<String>,
-    #[crudcrate(filterable, exclude(scoped))]
+    #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
     #[crudcrate(sortable, filterable)]
     pub site_replicate_id: Uuid,

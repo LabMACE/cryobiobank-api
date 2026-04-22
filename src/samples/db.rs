@@ -26,9 +26,9 @@ pub struct Model {
     pub is_available: bool,
     #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
     pub storage_location: Option<String>,
-    #[crudcrate(sortable, filterable, fulltext, exclude(scoped))]
+    #[crudcrate(sortable, filterable, fulltext)]
     pub description: Option<String>,
-    #[crudcrate(filterable, exclude(scoped))]
+    #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
 }
 

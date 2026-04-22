@@ -29,7 +29,7 @@ pub struct Model {
     pub elevation_metres: f64,
     #[crudcrate(sortable, filterable)]
     pub area_id: Option<Uuid>,
-    #[crudcrate(filterable, exclude(scoped))]
+    #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
     #[sea_orm(ignore)]
     #[crudcrate(non_db_attr, exclude(create, update), join(one, all, depth = 2))]

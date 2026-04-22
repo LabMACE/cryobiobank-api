@@ -24,7 +24,7 @@ pub struct Model {
     pub description: Option<String>,
     #[crudcrate(sortable, filterable)]
     pub colour: String,
-    #[crudcrate(filterable, exclude(scoped))]
+    #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
     #[sea_orm(ignore)]
     #[crudcrate(non_db_attr)]
