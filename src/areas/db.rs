@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use crudcrate::{ApiError, CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
 use sea_orm::{Condition, DatabaseConnection, Order, QueryOrder, QuerySelect};
@@ -26,6 +27,8 @@ pub struct Model {
     pub colour: String,
     #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
+    #[crudcrate(sortable, filterable, exclude(create, update), on_create = chrono::Utc::now())]
+    pub created_at: DateTime<Utc>,
     #[sea_orm(ignore)]
     #[crudcrate(non_db_attr)]
     pub geom: Option<serde_json::Value>,

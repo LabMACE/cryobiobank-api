@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
 use uuid::Uuid;
@@ -31,6 +32,8 @@ pub struct Model {
     pub area_id: Option<Uuid>,
     #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
+    #[crudcrate(sortable, filterable, exclude(create, update), on_create = chrono::Utc::now())]
+    pub created_at: DateTime<Utc>,
     #[sea_orm(ignore)]
     #[crudcrate(non_db_attr, exclude(create, update), join(one, all, depth = 2))]
     pub replicates: Vec<crate::sites::replicates::db::SiteReplicate>,

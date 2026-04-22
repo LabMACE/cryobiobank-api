@@ -1,5 +1,5 @@
 use crate::common::enums::SampleType;
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
 use uuid::Uuid;
@@ -94,6 +94,8 @@ pub struct Model {
     pub is_private: bool,
     #[crudcrate(sortable, filterable, fulltext)]
     pub metagenome_url: Option<String>,
+    #[crudcrate(sortable, filterable, exclude(create, update), on_create = chrono::Utc::now())]
+    pub created_at: DateTime<Utc>,
     #[sea_orm(ignore)]
     #[crudcrate(non_db_attr, join(one, all, depth = 1))]
     pub samples: Vec<crate::samples::db::Sample>,

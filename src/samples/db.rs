@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
 use uuid::Uuid;
@@ -30,6 +31,8 @@ pub struct Model {
     pub description: Option<String>,
     #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
+    #[crudcrate(sortable, filterable, exclude(create, update), on_create = chrono::Utc::now())]
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

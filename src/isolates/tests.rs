@@ -247,6 +247,29 @@ async fn test_isolate_images() {
         "data:image/png;base64,abc123",
         "Photo should be returned in get one"
     );
+    assert!(
+        isolate.get("created_at").and_then(|v| v.as_str()).is_some(),
+        "created_at should be serialized in get one response"
+    );
+
+    let create_second_payload = json!({
+        "name": "Isolate NoPhoto",
+        "site_replicate_id": replicate_id,
+        "taxonomy": "Bacillus",
+        "temperature_of_isolation": 4.0,
+        "media_used_for_isolation": "R2A"
+    });
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/isolates")
+        .header("Content-Type", "application/json")
+        .body(Body::from(create_second_payload.to_string()))
+        .unwrap();
+    let response = app.clone().oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let second_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+    let second: serde_json::Value = serde_json::from_slice(&second_body).unwrap();
+    let second_id = second.get("id").unwrap().as_str().unwrap();
 
     let request = Request::builder()
         .method("GET")
@@ -258,6 +281,7 @@ async fn test_isolate_images() {
     let isolates_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
     let isolates: serde_json::Value = serde_json::from_slice(&isolates_body).unwrap();
     let isolates = isolates.as_array().unwrap();
+
     let isolate = isolates
         .iter()
         .find(|i| i.get("id").unwrap().as_str().unwrap() == isolate_id)
@@ -267,5 +291,24 @@ async fn test_isolate_images() {
         photo.as_str(),
         None,
         "Photo should not be returned in get all"
+    );
+    assert_eq!(
+        isolate.get("has_photo").and_then(|v| v.as_bool()),
+        Some(true),
+        "has_photo should be true for an isolate with a non-empty photo"
+    );
+    assert!(
+        isolate.get("created_at").and_then(|v| v.as_str()).is_some(),
+        "created_at should be serialized in list response"
+    );
+
+    let second_in_list = isolates
+        .iter()
+        .find(|i| i.get("id").unwrap().as_str().unwrap() == second_id)
+        .unwrap();
+    assert_eq!(
+        second_in_list.get("has_photo").and_then(|v| v.as_bool()),
+        Some(false),
+        "has_photo should be false for an isolate without a photo"
     );
 }

@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
 use uuid::Uuid;
@@ -11,7 +12,8 @@ use uuid::Uuid;
     name_plural = "isolates",
     description = "Biological isolates with photos and metadata from sample collection sites",
     no_eq,
-    derive_partial_eq
+    derive_partial_eq,
+    read::many::body = crate::isolates::services::get_all_isolates_with_photo_flag
 )]
 pub struct Model {
     #[sea_orm(primary_key)]
@@ -41,6 +43,11 @@ pub struct Model {
     pub genome_url: Option<String>,
     #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
+    #[crudcrate(sortable, filterable, exclude(create, update), on_create = chrono::Utc::now())]
+    pub created_at: DateTime<Utc>,
+    #[sea_orm(ignore)]
+    #[crudcrate(non_db_attr)]
+    pub has_photo: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

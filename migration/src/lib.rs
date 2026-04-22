@@ -10,6 +10,7 @@ mod m20260304_000000_move_sample_type_to_samples;
 mod m20260304_100000_restructure_dna_relations;
 mod m20260327_000000_schema_cleanup;
 mod m20260417_000000_restructure_entities;
+mod m20260422_000000_add_created_at;
 
 pub struct Migrator;
 
@@ -27,6 +28,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260304_100000_restructure_dna_relations::Migration),
             Box::new(m20260327_000000_schema_cleanup::Migration),
             Box::new(m20260417_000000_restructure_entities::Migration),
+            Box::new(m20260422_000000_add_created_at::Migration),
         ]
     }
 }
