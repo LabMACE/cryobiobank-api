@@ -11,6 +11,7 @@ mod m20260304_100000_restructure_dna_relations;
 mod m20260327_000000_schema_cleanup;
 mod m20260417_000000_restructure_entities;
 mod m20260422_000000_add_created_at;
+mod m20260428_000000_rename_site_replicates_to_field_records;
 
 pub struct Migrator;
 
@@ -29,6 +30,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260327_000000_schema_cleanup::Migration),
             Box::new(m20260417_000000_restructure_entities::Migration),
             Box::new(m20260422_000000_add_created_at::Migration),
+            Box::new(m20260428_000000_rename_site_replicates_to_field_records::Migration),
         ]
     }
 }

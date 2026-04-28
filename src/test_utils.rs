@@ -4,11 +4,11 @@ use crate::{
     common::views as common_views,
     config::Config,
     dna::db::DNA as dna_views,
+    field_records::db::FieldRecord as fr_views,
     isolates::db::Isolate as iso_views,
     middleware,
     samples::db::Sample as samp_views,
     sites::db::Site as sites_views,
-    sites::replicates::db::SiteReplicate as sr_views,
 };
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
@@ -22,7 +22,7 @@ pub async fn setup_clean_db() -> DatabaseConnection {
 
     let truncate_query = Statement::from_string(
         DbBackend::Postgres,
-        "TRUNCATE TABLE samples, isolates, site_replicates, dna, sites, areas RESTART IDENTITY CASCADE;"
+        "TRUNCATE TABLE samples, isolates, field_records, dna, sites, areas RESTART IDENTITY CASCADE;"
             .to_owned(),
     );
     db.execute(truncate_query).await.unwrap();
@@ -43,8 +43,8 @@ pub fn build_app_with_db(db: DatabaseConnection) -> Router {
         .with_state(db.clone())
         .nest("/api/sites", sites_views::router(&db).split_for_parts().0)
         .nest(
-            "/api/site_replicates",
-            sr_views::router(&db).split_for_parts().0,
+            "/api/field_records",
+            fr_views::router(&db).split_for_parts().0,
         )
         .nest("/api/dna", dna_views::router(&db).split_for_parts().0)
         .nest("/api/isolates", iso_views::router(&db).split_for_parts().0)
@@ -65,11 +65,11 @@ pub fn build_scoped_app_with_db(db: DatabaseConnection) -> Router {
                 .layer(axum::middleware::from_fn(middleware::scope_sites)),
         )
         .nest(
-            "/api/site_replicates",
-            sr_views::router(&db)
+            "/api/field_records",
+            fr_views::router(&db)
                 .split_for_parts()
                 .0
-                .layer(axum::middleware::from_fn(middleware::scope_site_replicates)),
+                .layer(axum::middleware::from_fn(middleware::scope_field_records)),
         )
         .nest(
             "/api/dna",

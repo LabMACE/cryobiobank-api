@@ -33,12 +33,12 @@ fn check_write_access(req: &Request) -> Option<Response> {
     }
 }
 
-const REPLICATE_SUBQUERY: &str = "\
-    site_replicate_id IN (\
-        SELECT sr.id FROM site_replicates sr \
-        JOIN sites s ON sr.site_id = s.id \
+const FIELD_RECORD_SUBQUERY: &str = "\
+    field_record_id IN (\
+        SELECT fr.id FROM field_records fr \
+        JOIN sites s ON fr.site_id = s.id \
         LEFT JOIN areas a ON s.area_id = a.id \
-        WHERE sr.is_private = false AND s.is_private = false \
+        WHERE fr.is_private = false AND s.is_private = false \
         AND (a.id IS NULL OR a.is_private = false)\
     )";
 
@@ -54,9 +54,9 @@ pub fn sites_scope() -> Condition {
         ))
 }
 
-pub fn site_replicates_scope() -> Condition {
+pub fn field_records_scope() -> Condition {
     Condition::all()
-        .add(crate::sites::replicates::db::Column::IsPrivate.eq(false))
+        .add(crate::field_records::db::Column::IsPrivate.eq(false))
         .add(Expr::cust(
             "site_id IN (\
                 SELECT s.id FROM sites s \
@@ -70,19 +70,19 @@ pub fn site_replicates_scope() -> Condition {
 pub fn samples_scope() -> Condition {
     Condition::all()
         .add(crate::samples::db::Column::IsPrivate.eq(false))
-        .add(Expr::cust(REPLICATE_SUBQUERY))
+        .add(Expr::cust(FIELD_RECORD_SUBQUERY))
 }
 
 pub fn isolates_scope() -> Condition {
     Condition::all()
         .add(crate::isolates::db::Column::IsPrivate.eq(false))
-        .add(Expr::cust(REPLICATE_SUBQUERY))
+        .add(Expr::cust(FIELD_RECORD_SUBQUERY))
 }
 
 pub fn dna_scope() -> Condition {
     Condition::all()
         .add(crate::dna::db::Column::IsPrivate.eq(false))
-        .add(Expr::cust(REPLICATE_SUBQUERY))
+        .add(Expr::cust(FIELD_RECORD_SUBQUERY))
 }
 
 /// Areas: `is_private = false`
@@ -103,16 +103,16 @@ pub async fn scope_sites(mut req: Request, next: Next) -> Response {
     next.run(req).await
 }
 
-/// Site replicates: `is_private = false AND site is public (with area check)`
-pub async fn scope_site_replicates(mut req: Request, next: Next) -> Response {
+/// Field records: `is_private = false AND site is public (with area check)`
+pub async fn scope_field_records(mut req: Request, next: Next) -> Response {
     if let Some(r) = check_write_access(&req) { return r; }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(site_replicates_scope()));
+        req.extensions_mut().insert(ScopeCondition::new(field_records_scope()));
     }
     next.run(req).await
 }
 
-/// Samples: `is_private = false AND replicate/site/area chain is public`
+/// Samples: `is_private = false AND field_record/site/area chain is public`
 pub async fn scope_samples(mut req: Request, next: Next) -> Response {
     if let Some(r) = check_write_access(&req) { return r; }
     if !is_admin(&req) {
@@ -121,7 +121,7 @@ pub async fn scope_samples(mut req: Request, next: Next) -> Response {
     next.run(req).await
 }
 
-/// Isolates: `is_private = false AND replicate/site/area chain is public`
+/// Isolates: `is_private = false AND field_record/site/area chain is public`
 pub async fn scope_isolates(mut req: Request, next: Next) -> Response {
     if let Some(r) = check_write_access(&req) { return r; }
     if !is_admin(&req) {
@@ -130,7 +130,7 @@ pub async fn scope_isolates(mut req: Request, next: Next) -> Response {
     next.run(req).await
 }
 
-/// DNA: `is_private = false AND replicate/site/area chain is public`
+/// DNA: `is_private = false AND field_record/site/area chain is public`
 pub async fn scope_dna(mut req: Request, next: Next) -> Response {
     if let Some(r) = check_write_access(&req) { return r; }
     if !is_admin(&req) {
@@ -313,30 +313,30 @@ mod tests {
         })).await;
         let site_id = site["id"].as_str().unwrap();
 
-        let (_, replicate) = admin_create(&admin, "/api/site_replicates", json!({
-            "name": "Replicate 1", "site_id": site_id,
+        let (_, field_record) = admin_create(&admin, "/api/field_records", json!({
+            "name": "Field Record 1", "site_id": site_id,
             "sample_type": "Snow",
             "sampling_date": "2024-06-01",
             "is_private": false
         })).await;
-        let replicate_id = replicate["id"].as_str().unwrap();
+        let field_record_id = field_record["id"].as_str().unwrap();
 
         let (s, _) = admin_create(&admin, "/api/samples", json!({
-            "name": "Sample 1", "site_replicate_id": replicate_id, "is_private": false
+            "name": "Sample 1", "field_record_id": field_record_id, "is_private": false
         })).await;
         assert_eq!(s, StatusCode::CREATED);
 
         let (s, _) = admin_create(&admin, "/api/isolates", json!({
-            "name": "Isolate 1", "site_replicate_id": replicate_id, "is_private": false
+            "name": "Isolate 1", "field_record_id": field_record_id, "is_private": false
         })).await;
         assert_eq!(s, StatusCode::CREATED);
 
         let (s, _) = admin_create(&admin, "/api/dna", json!({
-            "name": "DNA 1", "site_replicate_id": replicate_id, "is_private": false
+            "name": "DNA 1", "field_record_id": field_record_id, "is_private": false
         })).await;
         assert_eq!(s, StatusCode::CREATED);
 
-        for endpoint in ["/api/sites", "/api/site_replicates", "/api/samples", "/api/isolates", "/api/dna"] {
+        for endpoint in ["/api/sites", "/api/field_records", "/api/samples", "/api/isolates", "/api/dna"] {
             let (status, body) = scoped_get(&scoped, endpoint).await;
             assert_eq!(status, StatusCode::OK, "GET {endpoint} should succeed");
             let items = body.as_array().expect("response should be an array");
@@ -344,15 +344,7 @@ mod tests {
         }
     }
 
-    /// Seeds a public site + public replicate with one public and one private
-    /// row in each of samples/isolates/dna and returns the replicate id.
-    ///
-    /// The public site_replicate is the parent for all children. We avoid the
-    /// site/area chain here because we want the scope to succeed at the
-    /// replicate level, forcing the scoped batch loader to produce rows — if
-    /// the chain filters the replicate out, the whole join is empty and the
-    /// test proves nothing.
-    async fn seed_replicate_with_mixed_children(app: &axum::Router) -> String {
+    async fn seed_field_record_with_mixed_children(app: &axum::Router) -> String {
         let (s, site) = admin_create(app, "/api/sites", json!({
             "name": "PubSite",
             "latitude_4326": 46.0, "longitude_4326": 7.0, "elevation_metres": 1000.0,
@@ -361,58 +353,55 @@ mod tests {
         assert_eq!(s, StatusCode::CREATED);
         let site_id = site["id"].as_str().unwrap();
 
-        let (s, replicate) = admin_create(app, "/api/site_replicates", json!({
-            "name": "PubReplicate", "site_id": site_id,
+        let (s, field_record) = admin_create(app, "/api/field_records", json!({
+            "name": "PubFieldRecord", "site_id": site_id,
             "sample_type": "Snow",
             "sampling_date": "2024-06-01",
             "is_private": false
         })).await;
         assert_eq!(s, StatusCode::CREATED);
-        let replicate_id = replicate["id"].as_str().unwrap().to_string();
+        let field_record_id = field_record["id"].as_str().unwrap().to_string();
 
         for (is_private, suffix) in [(false, "pub"), (true, "priv")] {
             let (s, _) = admin_create(app, "/api/samples", json!({
                 "name": format!("sample-{suffix}"),
-                "site_replicate_id": replicate_id,
+                "field_record_id": field_record_id,
                 "is_private": is_private
             })).await;
             assert_eq!(s, StatusCode::CREATED);
 
             let (s, _) = admin_create(app, "/api/isolates", json!({
                 "name": format!("isolate-{suffix}"),
-                "site_replicate_id": replicate_id,
+                "field_record_id": field_record_id,
                 "is_private": is_private
             })).await;
             assert_eq!(s, StatusCode::CREATED);
 
             let (s, _) = admin_create(app, "/api/dna", json!({
                 "name": format!("dna-{suffix}"),
-                "site_replicate_id": replicate_id,
+                "field_record_id": field_record_id,
                 "is_private": is_private
             })).await;
             assert_eq!(s, StatusCode::CREATED);
         }
 
-        replicate_id
+        field_record_id
     }
 
-    /// Public `GET /api/site_replicates` (list): embedded samples/isolates/dna
-    /// must only contain public rows. Proves `get_all_scoped` propagates the
-    /// child scope filter through crudcrate's batch loader on the list path.
     #[tokio::test]
     #[ignore]
-    async fn scoped_replicate_list_excludes_private_joined_children() {
+    async fn scoped_field_record_list_excludes_private_joined_children() {
         let db = setup_clean_db().await;
         let admin = build_app_with_db(db.clone());
         let scoped = build_scoped_app_with_db(db.clone());
 
-        seed_replicate_with_mixed_children(&admin).await;
+        seed_field_record_with_mixed_children(&admin).await;
 
-        let (status, body) = scoped_get(&scoped, "/api/site_replicates").await;
+        let (status, body) = scoped_get(&scoped, "/api/field_records").await;
         assert_eq!(status, StatusCode::OK);
-        let replicates = body.as_array().expect("response should be an array");
-        assert_eq!(replicates.len(), 1, "exactly one public replicate expected");
-        let r = &replicates[0];
+        let field_records = body.as_array().expect("response should be an array");
+        assert_eq!(field_records.len(), 1, "exactly one public field record expected");
+        let r = &field_records[0];
 
         for field in ["samples", "isolates", "dna"] {
             let children = r[field].as_array()
@@ -430,19 +419,16 @@ mod tests {
         }
     }
 
-    /// Public `GET /api/site_replicates/:id` (get_one): embedded children
-    /// must only contain public rows. Proves `get_one_scoped`'s SQL-level
-    /// child scope filter works for the Vec join at depth = 1.
     #[tokio::test]
     #[ignore]
-    async fn scoped_replicate_one_excludes_private_joined_children() {
+    async fn scoped_field_record_one_excludes_private_joined_children() {
         let db = setup_clean_db().await;
         let admin = build_app_with_db(db.clone());
         let scoped = build_scoped_app_with_db(db.clone());
 
-        let replicate_id = seed_replicate_with_mixed_children(&admin).await;
+        let field_record_id = seed_field_record_with_mixed_children(&admin).await;
 
-        let (status, r) = scoped_get(&scoped, &format!("/api/site_replicates/{replicate_id}")).await;
+        let (status, r) = scoped_get(&scoped, &format!("/api/field_records/{field_record_id}")).await;
         assert_eq!(status, StatusCode::OK);
         for field in ["samples", "isolates", "dna"] {
             let children = r[field].as_array()
@@ -459,9 +445,6 @@ mod tests {
         }
     }
 
-    /// Public `GET /api/areas/:id` (get_one at depth = 2): the sites array
-    /// must not contain any private sites. Proves that the depth > 1 branch
-    /// of the scoped join loader recurses via `get_one_scoped`, not `get_one`.
     #[tokio::test]
     #[ignore]
     async fn scoped_area_one_excludes_private_grandchildren() {
@@ -499,26 +482,23 @@ mod tests {
         assert_eq!(sites[0]["name"], "PubSiteUnderArea");
     }
 
-    /// Scoped response shape guard: `is_private` must be absent from every
-    /// nested child in the list response (belt-and-suspenders on top of
-    /// exclude(scoped)).
     #[tokio::test]
     #[ignore]
-    async fn scoped_replicate_list_is_private_absent_on_children() {
+    async fn scoped_field_record_list_is_private_absent_on_children() {
         let db = setup_clean_db().await;
         let admin = build_app_with_db(db.clone());
         let scoped = build_scoped_app_with_db(db.clone());
 
-        seed_replicate_with_mixed_children(&admin).await;
+        seed_field_record_with_mixed_children(&admin).await;
 
-        let (status, body) = scoped_get(&scoped, "/api/site_replicates").await;
+        let (status, body) = scoped_get(&scoped, "/api/field_records").await;
         assert_eq!(status, StatusCode::OK);
-        let replicates = body.as_array().unwrap();
-        assert_eq!(replicates.len(), 1);
-        let r = &replicates[0];
+        let field_records = body.as_array().unwrap();
+        assert_eq!(field_records.len(), 1);
+        let r = &field_records[0];
         assert!(
             r.get("is_private").is_none(),
-            "replicate itself should not expose is_private in scoped response"
+            "field record itself should not expose is_private in scoped response"
         );
         for field in ["samples", "isolates", "dna"] {
             for child in r[field].as_array().unwrap() {

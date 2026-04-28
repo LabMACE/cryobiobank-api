@@ -38,7 +38,7 @@ async fn crud_samples() {
     });
     let request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(create_replicate_payload.to_string()))
         .unwrap();
@@ -49,7 +49,7 @@ async fn crud_samples() {
 
     let create_payload = json!({
         "name": "P2S1-T",
-        "site_replicate_id": replicate_id,
+        "field_record_id": replicate_id,
         "storage_location": "Samples: A1",
         "description": "Initial sample"
     });
@@ -78,7 +78,7 @@ async fn crud_samples() {
 
     let update_payload = json!({
         "name": "P2S1-T-Updated",
-        "site_replicate_id": replicate_id,
+        "field_record_id": replicate_id,
         "storage_location": "Samples: A1",
         "description": "Updated sample"
     });
@@ -145,7 +145,7 @@ async fn test_samples_invalid_and_duplicate() {
     });
     let request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(create_replicate_payload.to_string()))
         .unwrap();
@@ -156,7 +156,7 @@ async fn test_samples_invalid_and_duplicate() {
 
     let invalid_uuid_payload = json!({
         "name": "Sample_Invalid_UUID",
-        "site_replicate_id": "invalid-uuid",
+        "field_record_id": "invalid-uuid",
         "storage_location": "Samples: Test",
         "description": "Test sample"
     });
@@ -171,7 +171,7 @@ async fn test_samples_invalid_and_duplicate() {
 
     let valid_payload = json!({
         "name": "Unique_Sample",
-        "site_replicate_id": replicate_id,
+        "field_record_id": replicate_id,
         "storage_location": "Samples: Test",
         "description": "Test sample"
     });

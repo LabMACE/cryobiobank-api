@@ -2,6 +2,7 @@ mod areas;
 mod common;
 mod config;
 mod dna;
+mod field_records;
 mod isolates;
 mod middleware;
 mod samples;
@@ -80,9 +81,9 @@ async fn run() {
                 .layer(axum::middleware::from_fn(middleware::scope_sites)),
         )
         .nest(
-            "/api/site_replicates",
-            Router::from(sites::replicates::db::SiteReplicate::router(&db.clone()))
-                .layer(axum::middleware::from_fn(middleware::scope_site_replicates)),
+            "/api/field_records",
+            Router::from(field_records::db::FieldRecord::router(&db.clone()))
+                .layer(axum::middleware::from_fn(middleware::scope_field_records)),
         )
         .nest(
             "/api/samples",

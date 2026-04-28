@@ -20,7 +20,7 @@ pub struct Model {
     #[crudcrate(primary_key, filterable, exclude(update,create), on_create = Uuid::new_v4())]
     pub id: Uuid,
     #[crudcrate(sortable, filterable)]
-    pub site_replicate_id: Uuid,
+    pub field_record_id: Uuid,
 
     #[sea_orm(unique)]
     #[crudcrate(sortable, filterable, fulltext)]
@@ -53,16 +53,16 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "crate::sites::replicates::db::Entity",
-        from = "Column::SiteReplicateId",
-        to = "crate::sites::replicates::db::Column::Id"
+        belongs_to = "crate::field_records::db::Entity",
+        from = "Column::FieldRecordId",
+        to = "crate::field_records::db::Column::Id"
     )]
-    SiteReplicate,
+    FieldRecord,
 }
 
-impl Related<crate::sites::replicates::db::Entity> for Entity {
+impl Related<crate::field_records::db::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::SiteReplicate.def()
+        Relation::FieldRecord.def()
     }
 }
 impl ActiveModelBehavior for ActiveModel {}

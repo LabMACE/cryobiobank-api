@@ -9,7 +9,7 @@ use crate::test_utils::{build_app_with_db, setup_clean_db};
 
 #[tokio::test]
 #[ignore]
-async fn create_site_replicate_valid() {
+async fn create_field_record_valid() {
     let db = setup_clean_db().await;
     let app = build_app_with_db(db.clone());
 
@@ -41,7 +41,7 @@ async fn create_site_replicate_valid() {
     });
     let request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(create_payload.to_string()))
         .unwrap();
@@ -51,7 +51,7 @@ async fn create_site_replicate_valid() {
 
 #[tokio::test]
 #[ignore]
-async fn create_site_replicate_invalid_date() {
+async fn create_field_record_invalid_date() {
     let db = setup_clean_db().await;
     let app = build_app_with_db(db.clone());
 
@@ -83,7 +83,7 @@ async fn create_site_replicate_invalid_date() {
     });
     let request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(create_payload.to_string()))
         .unwrap();
@@ -93,7 +93,7 @@ async fn create_site_replicate_invalid_date() {
 
 #[tokio::test]
 #[ignore]
-async fn test_site_replicates_invalid_data() {
+async fn test_field_records_invalid_data() {
     let db = setup_clean_db().await;
     let app = build_app_with_db(db.clone());
 
@@ -117,13 +117,13 @@ async fn test_site_replicates_invalid_data() {
 
     let invalid_date_payload = json!({
         "site_id": site_id,
-        "name": "Replicate_Invalid_Date",
+        "name": "FieldRecord_Invalid_Date",
         "sample_type": "Snow",
         "sampling_date": "2023-02-30"
     });
     let request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(invalid_date_payload.to_string()))
         .unwrap();
@@ -132,11 +132,11 @@ async fn test_site_replicates_invalid_data() {
 
     let missing_field_payload = json!({
         "site_id": site_id,
-        "name": "Replicate_Missing_Date"
+        "name": "FieldRecord_Missing_Date"
     });
     let request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(missing_field_payload.to_string()))
         .unwrap();

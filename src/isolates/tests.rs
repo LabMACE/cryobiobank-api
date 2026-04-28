@@ -41,7 +41,7 @@ async fn create_isolate_valid() {
     });
     let replicate_request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(create_replicate_payload.to_string()))
         .unwrap();
@@ -55,7 +55,7 @@ async fn create_isolate_valid() {
 
     let create_payload = json!({
         "name": "Isolate A",
-        "site_replicate_id": replicate_id,
+        "field_record_id": replicate_id,
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": 20.5,
@@ -104,7 +104,7 @@ async fn test_isolates_invalid_data() {
     });
     let request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(create_replicate_payload.to_string()))
         .unwrap();
@@ -115,7 +115,7 @@ async fn test_isolates_invalid_data() {
 
     let invalid_temp_payload = json!({
         "name": "Isolate_Invalid_Temp",
-        "site_replicate_id": replicate_id,
+        "field_record_id": replicate_id,
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": "hot",
@@ -134,7 +134,7 @@ async fn test_isolates_invalid_data() {
 
     let invalid_uuid_payload = json!({
         "name": "Isolate_Invalid_UUID",
-        "site_replicate_id": "not-a-uuid",
+        "field_record_id": "not-a-uuid",
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": 20.5,
@@ -186,7 +186,7 @@ async fn test_isolate_images() {
     });
     let replicate_request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(create_replicate_payload.to_string()))
         .unwrap();
@@ -200,7 +200,7 @@ async fn test_isolate_images() {
 
     let create_payload = json!({
         "name": "Isolate B",
-        "site_replicate_id": replicate_id,
+        "field_record_id": replicate_id,
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": 20.5,
@@ -254,7 +254,7 @@ async fn test_isolate_images() {
 
     let create_second_payload = json!({
         "name": "Isolate NoPhoto",
-        "site_replicate_id": replicate_id,
+        "field_record_id": replicate_id,
         "taxonomy": "Bacillus",
         "temperature_of_isolation": 4.0,
         "media_used_for_isolation": "R2A"

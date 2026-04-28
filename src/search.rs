@@ -84,17 +84,17 @@ pub async fn search(
     let scope_public = !middleware::is_admin(&req);
     let area_scope = scope_public.then(middleware::areas_scope);
     let site_scope = scope_public.then(middleware::sites_scope);
-    let replicate_scope = scope_public.then(middleware::site_replicates_scope);
+    let field_record_scope = scope_public.then(middleware::field_records_scope);
     let isolate_scope = scope_public.then(middleware::isolates_scope);
     let sample_scope = scope_public.then(middleware::samples_scope);
     let dna_scope = scope_public.then(middleware::dna_scope);
 
-    use crate::{areas, dna, isolates, samples, sites};
+    use crate::{areas, dna, field_records, isolates, samples, sites};
 
-    let (areas, sites, site_replicates, isolates, samples, dna) = tokio::join!(
+    let (areas, sites, field_records, isolates, samples, dna) = tokio::join!(
         search_resource::<areas::db::Area>(&query, backend, &db, area_scope),
         search_resource::<sites::db::Site>(&query, backend, &db, site_scope),
-        search_resource::<sites::replicates::db::SiteReplicate>(&query, backend, &db, replicate_scope),
+        search_resource::<field_records::db::FieldRecord>(&query, backend, &db, field_record_scope),
         search_resource::<isolates::db::Isolate>(&query, backend, &db, isolate_scope),
         search_resource::<samples::db::Sample>(&query, backend, &db, sample_scope),
         search_resource::<dna::db::DNA>(&query, backend, &db, dna_scope),
@@ -102,7 +102,7 @@ pub async fn search(
 
     let total = areas.len()
         + sites.len()
-        + site_replicates.len()
+        + field_records.len()
         + isolates.len()
         + samples.len()
         + dna.len();
@@ -110,7 +110,7 @@ pub async fn search(
     let results = HashMap::from([
         ("areas".to_string(), areas),
         ("sites".to_string(), sites),
-        ("site_replicates".to_string(), site_replicates),
+        ("field_records".to_string(), field_records),
         ("isolates".to_string(), isolates),
         ("samples".to_string(), samples),
         ("dna".to_string(), dna),

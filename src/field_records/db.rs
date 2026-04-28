@@ -5,13 +5,13 @@ use sea_orm::entity::prelude::*;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, EntityToModels)]
-#[sea_orm(table_name = "site_replicates")]
+#[sea_orm(table_name = "field_records")]
 #[crudcrate(
     generate_router,
-    api_struct = "SiteReplicate",
-    name_singular = "site_replicate",
-    name_plural = "site_replicates",
-    description = "Site replicate sampling points with detailed environmental and chemical data",
+    api_struct = "FieldRecord",
+    name_singular = "field_record",
+    name_plural = "field_records",
+    description = "Field record sampling points with detailed environmental and chemical data",
     no_eq,
     derive_partial_eq
 )]

@@ -28,7 +28,7 @@ pub struct Model {
     #[crudcrate(filterable, exclude(scoped), on_create = false)]
     pub is_private: bool,
     #[crudcrate(sortable, filterable)]
-    pub site_replicate_id: Uuid,
+    pub field_record_id: Uuid,
     #[crudcrate(sortable, filterable, exclude(create, update), on_create = chrono::Utc::now())]
     pub created_at: DateTime<Utc>,
 }
@@ -36,16 +36,16 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "crate::sites::replicates::db::Entity",
-        from = "Column::SiteReplicateId",
-        to = "crate::sites::replicates::db::Column::Id"
+        belongs_to = "crate::field_records::db::Entity",
+        from = "Column::FieldRecordId",
+        to = "crate::field_records::db::Column::Id"
     )]
-    SiteReplicate,
+    FieldRecord,
 }
 
-impl Related<crate::sites::replicates::db::Entity> for Entity {
+impl Related<crate::field_records::db::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::SiteReplicate.def()
+        Relation::FieldRecord.def()
     }
 }
 

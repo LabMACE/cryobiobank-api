@@ -10,7 +10,7 @@ use uuid::Uuid;
     api_struct = "Site",
     name_singular = "site",
     name_plural = "sites",
-    description = "Collection sites with coordinates and associated site replicates",
+    description = "Collection sites with coordinates and associated field records",
     no_eq,
     derive_partial_eq
 )]
@@ -36,13 +36,13 @@ pub struct Model {
     pub created_at: DateTime<Utc>,
     #[sea_orm(ignore)]
     #[crudcrate(non_db_attr, exclude(create, update), join(one, all, depth = 2))]
-    pub replicates: Vec<crate::sites::replicates::db::SiteReplicate>,
+    pub field_records: Vec<crate::field_records::db::FieldRecord>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "crate::sites::replicates::db::Entity")]
-    SiteReplicates,
+    #[sea_orm(has_many = "crate::field_records::db::Entity")]
+    FieldRecords,
     #[sea_orm(
         belongs_to = "crate::areas::db::Entity",
         from = "Column::AreaId",
@@ -51,9 +51,9 @@ pub enum Relation {
     Area,
 }
 
-impl Related<crate::sites::replicates::db::Entity> for Entity {
+impl Related<crate::field_records::db::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::SiteReplicates.def()
+        Relation::FieldRecords.def()
     }
 }
 

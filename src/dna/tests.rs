@@ -38,7 +38,7 @@ async fn create_dna_valid() {
     });
     let request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(create_replicate_payload.to_string()))
         .unwrap();
@@ -52,7 +52,7 @@ async fn create_dna_valid() {
         "name": "gDNA A",
         "description": "From Isolate A",
         "extraction_method": "Genomic DNA",
-        "site_replicate_id": replicate_id
+        "field_record_id": replicate_id
     });
     let request = Request::builder()
         .method("POST")
@@ -95,7 +95,7 @@ async fn test_dna_duplicate_name() {
     });
     let request = Request::builder()
         .method("POST")
-        .uri("/api/site_replicates")
+        .uri("/api/field_records")
         .header("Content-Type", "application/json")
         .body(Body::from(create_replicate_payload.to_string()))
         .unwrap();
@@ -109,7 +109,7 @@ async fn test_dna_duplicate_name() {
         "name": "gDNA Duplicate",
         "description": "Test DNA",
         "extraction_method": "Genomic DNA",
-        "site_replicate_id": replicate_id
+        "field_record_id": replicate_id
     });
     let request = Request::builder()
         .method("POST")
