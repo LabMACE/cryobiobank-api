@@ -31,28 +31,28 @@ async fn create_dna_valid() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    let create_replicate_payload = json!({
+    let create_field_record_payload = json!({
         "site_id": site_id,
-        "name": "DNA_Replicate",
+        "name": "DNA_FieldRecord",
         "sampling_date": "2023-02-18"
     });
     let request = Request::builder()
         .method("POST")
         .uri("/api/field_records")
         .header("Content-Type", "application/json")
-        .body(Body::from(create_replicate_payload.to_string()))
+        .body(Body::from(create_field_record_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::CREATED);
-    let replicate_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
-    let replicate: serde_json::Value = serde_json::from_slice(&replicate_body).unwrap();
-    let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
+    let field_record_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+    let field_record: serde_json::Value = serde_json::from_slice(&field_record_body).unwrap();
+    let field_record_id = field_record.get("id").unwrap().as_str().unwrap();
 
     let create_payload = json!({
         "name": "gDNA A",
         "description": "From Isolate A",
         "extraction_method": "Genomic DNA",
-        "field_record_id": replicate_id
+        "field_record_id": field_record_id
     });
     let request = Request::builder()
         .method("POST")
@@ -88,28 +88,28 @@ async fn test_dna_duplicate_name() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    let create_replicate_payload = json!({
+    let create_field_record_payload = json!({
         "site_id": site_id,
-        "name": "DNA_Dup_Replicate",
+        "name": "DNA_Dup_FieldRecord",
         "sampling_date": "2023-02-18"
     });
     let request = Request::builder()
         .method("POST")
         .uri("/api/field_records")
         .header("Content-Type", "application/json")
-        .body(Body::from(create_replicate_payload.to_string()))
+        .body(Body::from(create_field_record_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::CREATED);
-    let replicate_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
-    let replicate: serde_json::Value = serde_json::from_slice(&replicate_body).unwrap();
-    let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
+    let field_record_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+    let field_record: serde_json::Value = serde_json::from_slice(&field_record_body).unwrap();
+    let field_record_id = field_record.get("id").unwrap().as_str().unwrap();
 
     let create_payload = json!({
         "name": "gDNA Duplicate",
         "description": "Test DNA",
         "extraction_method": "Genomic DNA",
-        "field_record_id": replicate_id
+        "field_record_id": field_record_id
     });
     let request = Request::builder()
         .method("POST")

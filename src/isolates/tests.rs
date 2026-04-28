@@ -33,29 +33,29 @@ async fn create_isolate_valid() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    let create_replicate_payload = json!({
+    let create_field_record_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T",
         "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
-    let replicate_request = Request::builder()
+    let field_record_request = Request::builder()
         .method("POST")
         .uri("/api/field_records")
         .header("Content-Type", "application/json")
-        .body(Body::from(create_replicate_payload.to_string()))
+        .body(Body::from(create_field_record_payload.to_string()))
         .unwrap();
-    let replicate_response = app.clone().oneshot(replicate_request).await.unwrap();
-    assert_eq!(replicate_response.status(), StatusCode::CREATED);
-    let replicate_body = to_bytes(replicate_response.into_body(), 1024 * 1024)
+    let field_record_response = app.clone().oneshot(field_record_request).await.unwrap();
+    assert_eq!(field_record_response.status(), StatusCode::CREATED);
+    let field_record_body = to_bytes(field_record_response.into_body(), 1024 * 1024)
         .await
         .unwrap();
-    let replicate: serde_json::Value = serde_json::from_slice(&replicate_body).unwrap();
-    let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
+    let field_record: serde_json::Value = serde_json::from_slice(&field_record_body).unwrap();
+    let field_record_id = field_record.get("id").unwrap().as_str().unwrap();
 
     let create_payload = json!({
         "name": "Isolate A",
-        "field_record_id": replicate_id,
+        "field_record_id": field_record_id,
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": 20.5,
@@ -96,9 +96,9 @@ async fn test_isolates_invalid_data() {
     let site: serde_json::Value = serde_json::from_slice(&site_bytes).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    let create_replicate_payload = json!({
+    let create_field_record_payload = json!({
         "site_id": site_id,
-        "name": "Isolate_Replicate",
+        "name": "Isolate_FieldRecord",
         "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
@@ -106,16 +106,16 @@ async fn test_isolates_invalid_data() {
         .method("POST")
         .uri("/api/field_records")
         .header("Content-Type", "application/json")
-        .body(Body::from(create_replicate_payload.to_string()))
+        .body(Body::from(create_field_record_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
     let rep_bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
-    let replicate: serde_json::Value = serde_json::from_slice(&rep_bytes).unwrap();
-    let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
+    let field_record: serde_json::Value = serde_json::from_slice(&rep_bytes).unwrap();
+    let field_record_id = field_record.get("id").unwrap().as_str().unwrap();
 
     let invalid_temp_payload = json!({
         "name": "Isolate_Invalid_Temp",
-        "field_record_id": replicate_id,
+        "field_record_id": field_record_id,
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": "hot",
@@ -178,29 +178,29 @@ async fn test_isolate_images() {
     let site: serde_json::Value = serde_json::from_slice(&site_body).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    let create_replicate_payload = json!({
+    let create_field_record_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T2",
         "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
-    let replicate_request = Request::builder()
+    let field_record_request = Request::builder()
         .method("POST")
         .uri("/api/field_records")
         .header("Content-Type", "application/json")
-        .body(Body::from(create_replicate_payload.to_string()))
+        .body(Body::from(create_field_record_payload.to_string()))
         .unwrap();
-    let replicate_response = app.clone().oneshot(replicate_request).await.unwrap();
-    assert_eq!(replicate_response.status(), StatusCode::CREATED);
-    let replicate_body = to_bytes(replicate_response.into_body(), 1024 * 1024)
+    let field_record_response = app.clone().oneshot(field_record_request).await.unwrap();
+    assert_eq!(field_record_response.status(), StatusCode::CREATED);
+    let field_record_body = to_bytes(field_record_response.into_body(), 1024 * 1024)
         .await
         .unwrap();
-    let replicate: serde_json::Value = serde_json::from_slice(&replicate_body).unwrap();
-    let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
+    let field_record: serde_json::Value = serde_json::from_slice(&field_record_body).unwrap();
+    let field_record_id = field_record.get("id").unwrap().as_str().unwrap();
 
     let create_payload = json!({
         "name": "Isolate B",
-        "field_record_id": replicate_id,
+        "field_record_id": field_record_id,
         "taxonomy": "Pseudomonas",
         "photo": "",
         "temperature_of_isolation": 20.5,
@@ -254,7 +254,7 @@ async fn test_isolate_images() {
 
     let create_second_payload = json!({
         "name": "Isolate NoPhoto",
-        "field_record_id": replicate_id,
+        "field_record_id": field_record_id,
         "taxonomy": "Bacillus",
         "temperature_of_isolation": 4.0,
         "media_used_for_isolation": "R2A"

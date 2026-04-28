@@ -30,7 +30,7 @@ async fn crud_samples() {
     let site: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap().to_string();
 
-    let create_replicate_payload = json!({
+    let create_field_record_payload = json!({
         "site_id": site_id,
         "name": "P2S1-T",
         "sample_type": "Snow",
@@ -40,16 +40,16 @@ async fn crud_samples() {
         .method("POST")
         .uri("/api/field_records")
         .header("Content-Type", "application/json")
-        .body(Body::from(create_replicate_payload.to_string()))
+        .body(Body::from(create_field_record_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
     let body_bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
-    let replicate: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
-    let replicate_id = replicate.get("id").unwrap().as_str().unwrap().to_string();
+    let field_record: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+    let field_record_id = field_record.get("id").unwrap().as_str().unwrap().to_string();
 
     let create_payload = json!({
         "name": "P2S1-T",
-        "field_record_id": replicate_id,
+        "field_record_id": field_record_id,
         "storage_location": "Samples: A1",
         "description": "Initial sample"
     });
@@ -78,7 +78,7 @@ async fn crud_samples() {
 
     let update_payload = json!({
         "name": "P2S1-T-Updated",
-        "field_record_id": replicate_id,
+        "field_record_id": field_record_id,
         "storage_location": "Samples: A1",
         "description": "Updated sample"
     });
@@ -137,9 +137,9 @@ async fn test_samples_invalid_and_duplicate() {
     let site: serde_json::Value = serde_json::from_slice(&site_bytes).unwrap();
     let site_id = site.get("id").unwrap().as_str().unwrap();
 
-    let create_replicate_payload = json!({
+    let create_field_record_payload = json!({
         "site_id": site_id,
-        "name": "Sample_Replicate",
+        "name": "Sample_FieldRecord",
         "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
@@ -147,12 +147,12 @@ async fn test_samples_invalid_and_duplicate() {
         .method("POST")
         .uri("/api/field_records")
         .header("Content-Type", "application/json")
-        .body(Body::from(create_replicate_payload.to_string()))
+        .body(Body::from(create_field_record_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
     let rep_bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
-    let replicate: serde_json::Value = serde_json::from_slice(&rep_bytes).unwrap();
-    let replicate_id = replicate.get("id").unwrap().as_str().unwrap();
+    let field_record: serde_json::Value = serde_json::from_slice(&rep_bytes).unwrap();
+    let field_record_id = field_record.get("id").unwrap().as_str().unwrap();
 
     let invalid_uuid_payload = json!({
         "name": "Sample_Invalid_UUID",
@@ -171,7 +171,7 @@ async fn test_samples_invalid_and_duplicate() {
 
     let valid_payload = json!({
         "name": "Unique_Sample",
-        "field_record_id": replicate_id,
+        "field_record_id": field_record_id,
         "storage_location": "Samples: Test",
         "description": "Test sample"
     });

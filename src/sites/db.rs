@@ -35,7 +35,7 @@ pub struct Model {
     #[crudcrate(sortable, filterable, exclude(create, update), on_create = chrono::Utc::now())]
     pub created_at: DateTime<Utc>,
     #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr, exclude(create, update), join(one, all, depth = 2))]
+    #[crudcrate(non_db_attr, exclude(create, update), join(one, all, depth = 1))]
     pub field_records: Vec<crate::field_records::db::FieldRecord>,
 }
 
