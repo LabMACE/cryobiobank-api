@@ -17,4 +17,5 @@ version = "1.0.0"
 features = [
   "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
   "sqlx-postgres",        # `DATABASE_DRIVER` feature
+  "sqlx-sqlite",
 ]

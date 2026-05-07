@@ -16,7 +16,7 @@ use uuid::Uuid;
     read::many::body = crate::isolates::services::get_all_isolates_with_photo_flag
 )]
 pub struct Model {
-    #[sea_orm(primary_key)]
+    #[sea_orm(primary_key, auto_increment = false)]
     #[crudcrate(primary_key, filterable, exclude(update,create), on_create = Uuid::new_v4())]
     pub id: Uuid,
     #[crudcrate(sortable, filterable)]

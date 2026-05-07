@@ -14,7 +14,7 @@ use uuid::Uuid;
     derive_partial_eq
 )]
 pub struct Model {
-    #[sea_orm(primary_key)]
+    #[sea_orm(primary_key, auto_increment = false)]
     #[crudcrate(primary_key, filterable, exclude(update, create), on_create = Uuid::new_v4())]
     pub id: Uuid,
     #[crudcrate(sortable, filterable)]

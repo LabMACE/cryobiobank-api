@@ -238,7 +238,11 @@ async fn test_isolate_images() {
         .body(Body::empty())
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK, "Failed to get one isolate");
+    assert_eq!(
+        response.status(),
+        StatusCode::OK,
+        "Failed to get one isolate"
+    );
     let isolate_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
     let isolate: serde_json::Value = serde_json::from_slice(&isolate_body).unwrap();
     let photo = isolate.get("photo").unwrap();
@@ -277,7 +281,11 @@ async fn test_isolate_images() {
         .body(Body::empty())
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK, "Failed to get all isolates");
+    assert_eq!(
+        response.status(),
+        StatusCode::OK,
+        "Failed to get all isolates"
+    );
     let isolates_body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
     let isolates: serde_json::Value = serde_json::from_slice(&isolates_body).unwrap();
     let isolates = isolates.as_array().unwrap();

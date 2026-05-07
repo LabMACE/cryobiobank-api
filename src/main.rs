@@ -2,6 +2,8 @@ mod areas;
 mod common;
 mod config;
 mod dna;
+#[cfg(test)]
+mod e2e_tests;
 mod field_records;
 mod isolates;
 mod middleware;

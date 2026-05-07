@@ -31,10 +31,7 @@ pub async fn get_convex_hulls_batch(
         .query_all(Statement::from_sql_and_values(
             DbBackend::Postgres,
             raw_sql,
-            vec![
-                config.area_buffer_metres.into(),
-                area_ids.to_vec().into(),
-            ],
+            vec![config.area_buffer_metres.into(), area_ids.to_vec().into()],
         ))
         .await
     {

@@ -1,17 +1,12 @@
-use axum::Router;
 use crate::{
-    areas::db::Area as area_views,
-    common::views as common_views,
-    config::Config,
-    dna::db::DNA as dna_views,
-    field_records::db::FieldRecord as fr_views,
-    isolates::db::Isolate as iso_views,
-    middleware,
-    samples::db::Sample as samp_views,
+    areas::db::Area as area_views, common::views as common_views, config::Config,
+    dna::db::DNA as dna_views, field_records::db::FieldRecord as fr_views,
+    isolates::db::Isolate as iso_views, middleware, samples::db::Sample as samp_views,
     sites::db::Site as sites_views,
 };
+use axum::Router;
 use migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
+use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Schema, Statement};
 
 pub async fn setup_clean_db() -> DatabaseConnection {
     let config = Config::from_env();
@@ -29,6 +24,32 @@ pub async fn setup_clean_db() -> DatabaseConnection {
     Migrator::up(&db, None)
         .await
         .expect("Failed to run migrations");
+
+    db
+}
+
+pub async fn setup_sqlite_db() -> DatabaseConnection {
+    let db = Database::connect("sqlite::memory:")
+        .await
+        .expect("Failed to create in-memory SQLite database");
+
+    let backend = db.get_database_backend();
+    let schema = Schema::new(backend);
+
+    let tables: Vec<sea_orm::sea_query::TableCreateStatement> = vec![
+        schema.create_table_from_entity(crate::areas::db::Entity),
+        schema.create_table_from_entity(crate::sites::db::Entity),
+        schema.create_table_from_entity(crate::field_records::db::Entity),
+        schema.create_table_from_entity(crate::samples::db::Entity),
+        schema.create_table_from_entity(crate::isolates::db::Entity),
+        schema.create_table_from_entity(crate::dna::db::Entity),
+    ];
+
+    for stmt in tables {
+        db.execute(backend.build(&stmt))
+            .await
+            .expect("Failed to create table");
+    }
 
     db
 }

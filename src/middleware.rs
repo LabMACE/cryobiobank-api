@@ -9,7 +9,8 @@ use sea_orm::{sea_query::Expr, ColumnTrait, Condition};
 
 use crate::common::auth::Role;
 
-type AuthStatus = axum_keycloak_auth::KeycloakAuthStatus<Role, axum_keycloak_auth::decode::ProfileAndEmail>;
+type AuthStatus =
+    axum_keycloak_auth::KeycloakAuthStatus<Role, axum_keycloak_auth::decode::ProfileAndEmail>;
 
 pub fn is_admin(req: &Request) -> bool {
     req.extensions()
@@ -87,54 +88,72 @@ pub fn dna_scope() -> Condition {
 
 /// Areas: `is_private = false`
 pub async fn scope_areas(mut req: Request, next: Next) -> Response {
-    if let Some(r) = check_write_access(&req) { return r; }
+    if let Some(r) = check_write_access(&req) {
+        return r;
+    }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(areas_scope()));
+        req.extensions_mut()
+            .insert(ScopeCondition::new(areas_scope()));
     }
     next.run(req).await
 }
 
 /// Sites: `is_private = false AND (area_id IS NULL OR area not private)`
 pub async fn scope_sites(mut req: Request, next: Next) -> Response {
-    if let Some(r) = check_write_access(&req) { return r; }
+    if let Some(r) = check_write_access(&req) {
+        return r;
+    }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(sites_scope()));
+        req.extensions_mut()
+            .insert(ScopeCondition::new(sites_scope()));
     }
     next.run(req).await
 }
 
 /// Field records: `is_private = false AND site is public (with area check)`
 pub async fn scope_field_records(mut req: Request, next: Next) -> Response {
-    if let Some(r) = check_write_access(&req) { return r; }
+    if let Some(r) = check_write_access(&req) {
+        return r;
+    }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(field_records_scope()));
+        req.extensions_mut()
+            .insert(ScopeCondition::new(field_records_scope()));
     }
     next.run(req).await
 }
 
 /// Samples: `is_private = false AND field_record/site/area chain is public`
 pub async fn scope_samples(mut req: Request, next: Next) -> Response {
-    if let Some(r) = check_write_access(&req) { return r; }
+    if let Some(r) = check_write_access(&req) {
+        return r;
+    }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(samples_scope()));
+        req.extensions_mut()
+            .insert(ScopeCondition::new(samples_scope()));
     }
     next.run(req).await
 }
 
 /// Isolates: `is_private = false AND field_record/site/area chain is public`
 pub async fn scope_isolates(mut req: Request, next: Next) -> Response {
-    if let Some(r) = check_write_access(&req) { return r; }
+    if let Some(r) = check_write_access(&req) {
+        return r;
+    }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(isolates_scope()));
+        req.extensions_mut()
+            .insert(ScopeCondition::new(isolates_scope()));
     }
     next.run(req).await
 }
 
 /// DNA: `is_private = false AND field_record/site/area chain is public`
 pub async fn scope_dna(mut req: Request, next: Next) -> Response {
-    if let Some(r) = check_write_access(&req) { return r; }
+    if let Some(r) = check_write_access(&req) {
+        return r;
+    }
     if !is_admin(&req) {
-        req.extensions_mut().insert(ScopeCondition::new(dna_scope()));
+        req.extensions_mut()
+            .insert(ScopeCondition::new(dna_scope()));
     }
     next.run(req).await
 }
@@ -227,21 +246,35 @@ mod tests {
         })).await;
         let area_id = area["id"].as_str().unwrap();
 
-        let (s, _) = admin_create(&admin, "/api/sites", json!({
-            "name": "Site Under Private Area", "latitude_4326": 46.0, "longitude_4326": 7.0,
-            "elevation_metres": 1000.0, "area_id": area_id, "is_private": false
-        })).await;
+        let (s, _) = admin_create(
+            &admin,
+            "/api/sites",
+            json!({
+                "name": "Site Under Private Area", "latitude_4326": 46.0, "longitude_4326": 7.0,
+                "elevation_metres": 1000.0, "area_id": area_id, "is_private": false
+            }),
+        )
+        .await;
         assert_eq!(s, StatusCode::CREATED);
-        let (s, _) = admin_create(&admin, "/api/sites", json!({
-            "name": "Standalone Public Site", "latitude_4326": 47.0, "longitude_4326": 8.0,
-            "elevation_metres": 500.0, "is_private": false
-        })).await;
+        let (s, _) = admin_create(
+            &admin,
+            "/api/sites",
+            json!({
+                "name": "Standalone Public Site", "latitude_4326": 47.0, "longitude_4326": 8.0,
+                "elevation_metres": 500.0, "is_private": false
+            }),
+        )
+        .await;
         assert_eq!(s, StatusCode::CREATED);
 
         let (status, body) = scoped_get(&scoped, "/api/sites").await;
         assert_eq!(status, StatusCode::OK);
         let sites = body.as_array().expect("response should be an array");
-        assert_eq!(sites.len(), 1, "Only standalone public site should be visible");
+        assert_eq!(
+            sites.len(),
+            1,
+            "Only standalone public site should be visible"
+        );
         assert_eq!(sites[0]["name"], "Standalone Public Site");
     }
 
@@ -260,11 +293,17 @@ mod tests {
         let (_, body) = scoped_get(&scoped, "/api/areas").await;
         let areas = body.as_array().unwrap();
         assert!(!areas.is_empty());
-        assert!(areas[0].get("is_private").is_none(), "is_private should not be in scoped list response");
+        assert!(
+            areas[0].get("is_private").is_none(),
+            "is_private should not be in scoped list response"
+        );
 
         let (status, item) = scoped_get(&scoped, &format!("/api/areas/{id}")).await;
         assert_eq!(status, StatusCode::OK);
-        assert!(item.get("is_private").is_none(), "is_private should not be in scoped get_one response");
+        assert!(
+            item.get("is_private").is_none(),
+            "is_private should not be in scoped get_one response"
+        );
     }
 
     #[tokio::test]
@@ -274,23 +313,31 @@ mod tests {
         let scoped = build_scoped_app_with_db(db.clone());
 
         let request = Request::builder()
-            .method("POST").uri("/api/areas")
+            .method("POST")
+            .uri("/api/areas")
             .header("Content-Type", "application/json")
-            .body(Body::from(json!({"name": "hack", "description": "", "colour": "#000", "is_private": false}).to_string()))
+            .body(Body::from(
+                json!({"name": "hack", "description": "", "colour": "#000", "is_private": false})
+                    .to_string(),
+            ))
             .unwrap();
         let response = scoped.clone().oneshot(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
 
         let request = Request::builder()
-            .method("DELETE").uri("/api/areas/00000000-0000-0000-0000-000000000001")
-            .body(Body::empty()).unwrap();
+            .method("DELETE")
+            .uri("/api/areas/00000000-0000-0000-0000-000000000001")
+            .body(Body::empty())
+            .unwrap();
         let response = scoped.clone().oneshot(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
 
         let request = Request::builder()
-            .method("PUT").uri("/api/areas/00000000-0000-0000-0000-000000000001")
+            .method("PUT")
+            .uri("/api/areas/00000000-0000-0000-0000-000000000001")
             .header("Content-Type", "application/json")
-            .body(Body::from(json!({"name": "hacked"}).to_string())).unwrap();
+            .body(Body::from(json!({"name": "hacked"}).to_string()))
+            .unwrap();
         let response = scoped.clone().oneshot(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
@@ -307,81 +354,141 @@ mod tests {
         })).await;
         let area_id = area["id"].as_str().unwrap();
 
-        let (_, site) = admin_create(&admin, "/api/sites", json!({
-            "name": "Child Site", "latitude_4326": 46.0, "longitude_4326": 7.0,
-            "elevation_metres": 1000.0, "area_id": area_id, "is_private": false
-        })).await;
+        let (_, site) = admin_create(
+            &admin,
+            "/api/sites",
+            json!({
+                "name": "Child Site", "latitude_4326": 46.0, "longitude_4326": 7.0,
+                "elevation_metres": 1000.0, "area_id": area_id, "is_private": false
+            }),
+        )
+        .await;
         let site_id = site["id"].as_str().unwrap();
 
-        let (_, field_record) = admin_create(&admin, "/api/field_records", json!({
-            "name": "Field Record 1", "site_id": site_id,
-            "sample_type": "Snow",
-            "sampling_date": "2024-06-01",
-            "is_private": false
-        })).await;
+        let (_, field_record) = admin_create(
+            &admin,
+            "/api/field_records",
+            json!({
+                "name": "Field Record 1", "site_id": site_id,
+                "sample_type": "Snow",
+                "sampling_date": "2024-06-01",
+                "is_private": false
+            }),
+        )
+        .await;
         let field_record_id = field_record["id"].as_str().unwrap();
 
-        let (s, _) = admin_create(&admin, "/api/samples", json!({
-            "name": "Sample 1", "field_record_id": field_record_id, "is_private": false
-        })).await;
+        let (s, _) = admin_create(
+            &admin,
+            "/api/samples",
+            json!({
+                "name": "Sample 1", "field_record_id": field_record_id, "is_private": false
+            }),
+        )
+        .await;
         assert_eq!(s, StatusCode::CREATED);
 
-        let (s, _) = admin_create(&admin, "/api/isolates", json!({
-            "name": "Isolate 1", "field_record_id": field_record_id, "is_private": false
-        })).await;
+        let (s, _) = admin_create(
+            &admin,
+            "/api/isolates",
+            json!({
+                "name": "Isolate 1", "field_record_id": field_record_id, "is_private": false
+            }),
+        )
+        .await;
         assert_eq!(s, StatusCode::CREATED);
 
-        let (s, _) = admin_create(&admin, "/api/dna", json!({
-            "name": "DNA 1", "field_record_id": field_record_id, "is_private": false
-        })).await;
+        let (s, _) = admin_create(
+            &admin,
+            "/api/dna",
+            json!({
+                "name": "DNA 1", "field_record_id": field_record_id, "is_private": false
+            }),
+        )
+        .await;
         assert_eq!(s, StatusCode::CREATED);
 
-        for endpoint in ["/api/sites", "/api/field_records", "/api/samples", "/api/isolates", "/api/dna"] {
+        for endpoint in [
+            "/api/sites",
+            "/api/field_records",
+            "/api/samples",
+            "/api/isolates",
+            "/api/dna",
+        ] {
             let (status, body) = scoped_get(&scoped, endpoint).await;
             assert_eq!(status, StatusCode::OK, "GET {endpoint} should succeed");
             let items = body.as_array().expect("response should be an array");
-            assert!(items.is_empty(), "GET {endpoint} should return empty list when root area is private, got {} items", items.len());
+            assert!(
+                items.is_empty(),
+                "GET {endpoint} should return empty list when root area is private, got {} items",
+                items.len()
+            );
         }
     }
 
     async fn seed_field_record_with_mixed_children(app: &axum::Router) -> String {
-        let (s, site) = admin_create(app, "/api/sites", json!({
-            "name": "PubSite",
-            "latitude_4326": 46.0, "longitude_4326": 7.0, "elevation_metres": 1000.0,
-            "is_private": false
-        })).await;
+        let (s, site) = admin_create(
+            app,
+            "/api/sites",
+            json!({
+                "name": "PubSite",
+                "latitude_4326": 46.0, "longitude_4326": 7.0, "elevation_metres": 1000.0,
+                "is_private": false
+            }),
+        )
+        .await;
         assert_eq!(s, StatusCode::CREATED);
         let site_id = site["id"].as_str().unwrap();
 
-        let (s, field_record) = admin_create(app, "/api/field_records", json!({
-            "name": "PubFieldRecord", "site_id": site_id,
-            "sample_type": "Snow",
-            "sampling_date": "2024-06-01",
-            "is_private": false
-        })).await;
+        let (s, field_record) = admin_create(
+            app,
+            "/api/field_records",
+            json!({
+                "name": "PubFieldRecord", "site_id": site_id,
+                "sample_type": "Snow",
+                "sampling_date": "2024-06-01",
+                "is_private": false
+            }),
+        )
+        .await;
         assert_eq!(s, StatusCode::CREATED);
         let field_record_id = field_record["id"].as_str().unwrap().to_string();
 
         for (is_private, suffix) in [(false, "pub"), (true, "priv")] {
-            let (s, _) = admin_create(app, "/api/samples", json!({
-                "name": format!("sample-{suffix}"),
-                "field_record_id": field_record_id,
-                "is_private": is_private
-            })).await;
+            let (s, _) = admin_create(
+                app,
+                "/api/samples",
+                json!({
+                    "name": format!("sample-{suffix}"),
+                    "field_record_id": field_record_id,
+                    "is_private": is_private
+                }),
+            )
+            .await;
             assert_eq!(s, StatusCode::CREATED);
 
-            let (s, _) = admin_create(app, "/api/isolates", json!({
-                "name": format!("isolate-{suffix}"),
-                "field_record_id": field_record_id,
-                "is_private": is_private
-            })).await;
+            let (s, _) = admin_create(
+                app,
+                "/api/isolates",
+                json!({
+                    "name": format!("isolate-{suffix}"),
+                    "field_record_id": field_record_id,
+                    "is_private": is_private
+                }),
+            )
+            .await;
             assert_eq!(s, StatusCode::CREATED);
 
-            let (s, _) = admin_create(app, "/api/dna", json!({
-                "name": format!("dna-{suffix}"),
-                "field_record_id": field_record_id,
-                "is_private": is_private
-            })).await;
+            let (s, _) = admin_create(
+                app,
+                "/api/dna",
+                json!({
+                    "name": format!("dna-{suffix}"),
+                    "field_record_id": field_record_id,
+                    "is_private": is_private
+                }),
+            )
+            .await;
             assert_eq!(s, StatusCode::CREATED);
         }
 
@@ -400,14 +507,20 @@ mod tests {
         let (status, body) = scoped_get(&scoped, "/api/field_records").await;
         assert_eq!(status, StatusCode::OK);
         let field_records = body.as_array().expect("response should be an array");
-        assert_eq!(field_records.len(), 1, "exactly one public field record expected");
+        assert_eq!(
+            field_records.len(),
+            1,
+            "exactly one public field record expected"
+        );
         let r = &field_records[0];
 
         for field in ["samples", "isolates", "dna"] {
-            let children = r[field].as_array()
+            let children = r[field]
+                .as_array()
                 .unwrap_or_else(|| panic!("expected {field} array, got {r}"));
             assert_eq!(
-                children.len(), 1,
+                children.len(),
+                1,
                 "{field}: expected only the public row in scoped list, got {} items: {children:?}",
                 children.len()
             );
@@ -428,13 +541,16 @@ mod tests {
 
         let field_record_id = seed_field_record_with_mixed_children(&admin).await;
 
-        let (status, r) = scoped_get(&scoped, &format!("/api/field_records/{field_record_id}")).await;
+        let (status, r) =
+            scoped_get(&scoped, &format!("/api/field_records/{field_record_id}")).await;
         assert_eq!(status, StatusCode::OK);
         for field in ["samples", "isolates", "dna"] {
-            let children = r[field].as_array()
+            let children = r[field]
+                .as_array()
                 .unwrap_or_else(|| panic!("expected {field} array, got {r}"));
             assert_eq!(
-                children.len(), 1,
+                children.len(),
+                1,
                 "{field}: expected only the public row in scoped get_one, got {} items",
                 children.len()
             );
@@ -452,30 +568,46 @@ mod tests {
         let admin = build_app_with_db(db.clone());
         let scoped = build_scoped_app_with_db(db.clone());
 
-        let (_, area) = admin_create(&admin, "/api/areas", json!({
-            "name": "PubArea", "description": "public", "colour": "#00ff00", "is_private": false
-        })).await;
+        let (_, area) = admin_create(
+            &admin,
+            "/api/areas",
+            json!({
+                "name": "PubArea", "description": "public", "colour": "#00ff00", "is_private": false
+            }),
+        )
+        .await;
         let area_id = area["id"].as_str().unwrap();
 
-        let (s, _) = admin_create(&admin, "/api/sites", json!({
-            "name": "PubSiteUnderArea",
-            "latitude_4326": 46.0, "longitude_4326": 7.0, "elevation_metres": 1000.0,
-            "area_id": area_id, "is_private": false
-        })).await;
+        let (s, _) = admin_create(
+            &admin,
+            "/api/sites",
+            json!({
+                "name": "PubSiteUnderArea",
+                "latitude_4326": 46.0, "longitude_4326": 7.0, "elevation_metres": 1000.0,
+                "area_id": area_id, "is_private": false
+            }),
+        )
+        .await;
         assert_eq!(s, StatusCode::CREATED);
 
-        let (s, _) = admin_create(&admin, "/api/sites", json!({
-            "name": "PrivSiteUnderArea",
-            "latitude_4326": 47.0, "longitude_4326": 8.0, "elevation_metres": 500.0,
-            "area_id": area_id, "is_private": true
-        })).await;
+        let (s, _) = admin_create(
+            &admin,
+            "/api/sites",
+            json!({
+                "name": "PrivSiteUnderArea",
+                "latitude_4326": 47.0, "longitude_4326": 8.0, "elevation_metres": 500.0,
+                "area_id": area_id, "is_private": true
+            }),
+        )
+        .await;
         assert_eq!(s, StatusCode::CREATED);
 
         let (status, area_json) = scoped_get(&scoped, &format!("/api/areas/{area_id}")).await;
         assert_eq!(status, StatusCode::OK);
         let sites = area_json["sites"].as_array().expect("sites array");
         assert_eq!(
-            sites.len(), 1,
+            sites.len(),
+            1,
             "expected only the public site via depth>1 scoped join, got {} entries: {sites:?}",
             sites.len()
         );

@@ -45,7 +45,12 @@ async fn crud_samples() {
     let response = app.clone().oneshot(request).await.unwrap();
     let body_bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
     let field_record: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
-    let field_record_id = field_record.get("id").unwrap().as_str().unwrap().to_string();
+    let field_record_id = field_record
+        .get("id")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let create_payload = json!({
         "name": "P2S1-T",

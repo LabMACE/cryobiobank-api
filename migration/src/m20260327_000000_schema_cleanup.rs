@@ -9,10 +9,8 @@ impl MigrationTrait for Migration {
         let db = manager.get_connection();
 
         // 1. samples.site_replicate_id: nullable → NOT NULL
-        db.execute_unprepared(
-            r#"ALTER TABLE samples ALTER COLUMN site_replicate_id SET NOT NULL"#,
-        )
-        .await?;
+        db.execute_unprepared(r#"ALTER TABLE samples ALTER COLUMN site_replicate_id SET NOT NULL"#)
+            .await?;
 
         // 2. areas.name: nullable → NOT NULL
         db.execute_unprepared(r#"ALTER TABLE areas ALTER COLUMN name SET NOT NULL"#)
@@ -23,25 +21,17 @@ impl MigrationTrait for Migration {
             .await?;
 
         // 4. areas.name: add UNIQUE constraint (Rust model declares it but DB was missing it)
-        db.execute_unprepared(
-            r#"ALTER TABLE areas ADD CONSTRAINT areas_name_key UNIQUE (name)"#,
-        )
-        .await?;
+        db.execute_unprepared(r#"ALTER TABLE areas ADD CONSTRAINT areas_name_key UNIQUE (name)"#)
+            .await?;
 
         // 5. Drop old sequencing/publication columns from site_replicates
         //    (sequencing replaced by metagenome_url, publications unused)
-        db.execute_unprepared(
-            r#"ALTER TABLE site_replicates DROP COLUMN sequencing_results_16s"#,
-        )
-        .await?;
-        db.execute_unprepared(
-            r#"ALTER TABLE site_replicates DROP COLUMN sequencing_metagenomics"#,
-        )
-        .await?;
-        db.execute_unprepared(
-            r#"ALTER TABLE site_replicates DROP COLUMN relevant_publications"#,
-        )
-        .await?;
+        db.execute_unprepared(r#"ALTER TABLE site_replicates DROP COLUMN sequencing_results_16s"#)
+            .await?;
+        db.execute_unprepared(r#"ALTER TABLE site_replicates DROP COLUMN sequencing_metagenomics"#)
+            .await?;
+        db.execute_unprepared(r#"ALTER TABLE site_replicates DROP COLUMN relevant_publications"#)
+            .await?;
 
         // 6. Add CHECK constraints for sample_type enum values
         db.execute_unprepared(
@@ -61,10 +51,8 @@ impl MigrationTrait for Migration {
 
         db.execute_unprepared(r#"ALTER TABLE samples DROP CONSTRAINT samples_sample_type_check"#)
             .await?;
-        db.execute_unprepared(
-            r#"ALTER TABLE isolates DROP CONSTRAINT isolates_sample_type_check"#,
-        )
-        .await?;
+        db.execute_unprepared(r#"ALTER TABLE isolates DROP CONSTRAINT isolates_sample_type_check"#)
+            .await?;
         db.execute_unprepared(
             r#"ALTER TABLE site_replicates ADD COLUMN relevant_publications TEXT NULL"#,
         )

@@ -1,8 +1,8 @@
+use crate::sites::db::Site;
 use axum::{
     body::{to_bytes, Body},
     http::{Request, StatusCode},
 };
-use crate::sites::db::Site;
 use serde_json::json;
 use tower::ServiceExt;
 

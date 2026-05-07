@@ -10,10 +10,8 @@ impl MigrationTrait for Migration {
         let db = manager.get_connection();
 
         // 1. Add sample_type to site_replicates (nullable for backfill)
-        db.execute_unprepared(
-            r#"ALTER TABLE site_replicates ADD COLUMN sample_type TEXT NULL"#,
-        )
-        .await?;
+        db.execute_unprepared(r#"ALTER TABLE site_replicates ADD COLUMN sample_type TEXT NULL"#)
+            .await?;
 
         // 2. Backfill from samples first (most common), then fall back to isolates.
         db.execute_unprepared(
@@ -63,18 +61,14 @@ impl MigrationTrait for Migration {
         .await?;
 
         // 4. Drop sample_type from samples.
-        db.execute_unprepared(
-            r#"ALTER TABLE samples DROP CONSTRAINT samples_sample_type_check"#,
-        )
-        .await?;
+        db.execute_unprepared(r#"ALTER TABLE samples DROP CONSTRAINT samples_sample_type_check"#)
+            .await?;
         db.execute_unprepared(r#"ALTER TABLE samples DROP COLUMN sample_type"#)
             .await?;
 
         // 5. Drop sample_type from isolates.
-        db.execute_unprepared(
-            r#"ALTER TABLE isolates DROP CONSTRAINT isolates_sample_type_check"#,
-        )
-        .await?;
+        db.execute_unprepared(r#"ALTER TABLE isolates DROP CONSTRAINT isolates_sample_type_check"#)
+            .await?;
         db.execute_unprepared(r#"ALTER TABLE isolates DROP COLUMN sample_type"#)
             .await?;
 
