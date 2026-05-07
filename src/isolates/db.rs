@@ -46,7 +46,7 @@ pub struct Model {
     #[crudcrate(sortable, filterable, exclude(create, update), on_create = chrono::Utc::now())]
     pub created_at: DateTime<Utc>,
     #[sea_orm(ignore)]
-    #[crudcrate(non_db_attr)]
+    #[crudcrate(non_db_attr, exclude(create, update))]
     pub has_photo: bool,
 }
 
