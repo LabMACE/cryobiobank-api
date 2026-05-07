@@ -27,7 +27,9 @@ impl Config {
             ))
         });
 
-        let config = Config {
+        
+
+        Config {
             app_name: env::var("APP_NAME").expect("APP_NAME must be set"),
             keycloak_ui_id: env::var("KEYCLOAK_UI_ID").expect("KEYCLOAK_UI_ID must be set"),
             keycloak_url: env::var("KEYCLOAK_URL").expect("KEYCLOAK_URL must be set"),
@@ -39,8 +41,6 @@ impl Config {
                 .parse()
                 .expect("AREA_BUFFER_METRES must be a number"),
             db_url,
-        };
-
-        config
+        }
     }
 }

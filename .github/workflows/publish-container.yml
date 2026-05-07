@@ -18,6 +18,20 @@ env:
 
 
 jobs:
+  e2e-test:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      KEYCLOAK_URL: http://fake
+      KEYCLOAK_REALM: test
+      KEYCLOAK_UI_ID: test
+      APP_NAME: test
+      DEPLOYMENT: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test e2e_tests -- --nocapture
+
   test:
     runs-on: ubuntu-latest
     services:

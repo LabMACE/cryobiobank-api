@@ -32,7 +32,7 @@ fn main() {
 async fn run() {
     let config = Config::from_env();
 
-    let db: DatabaseConnection = Database::connect(&*config.db_url.as_ref().unwrap())
+    let db: DatabaseConnection = Database::connect(config.db_url.as_ref().unwrap())
         .await
         .unwrap();
 

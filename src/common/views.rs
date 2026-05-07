@@ -17,16 +17,13 @@ use sea_orm::DatabaseConnection;
     )
 )]
 pub async fn healthz(State(db): State<DatabaseConnection>) -> (StatusCode, Json<HealthCheck>) {
-    match db.ping().await {
-        Err(_) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(HealthCheck {
-                    status: "error".to_string(),
-                }),
-            )
-        }
-        _ => {}
+    if let Err(_) = db.ping().await {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(HealthCheck {
+                status: "error".to_string(),
+            }),
+        )
     };
 
     (
