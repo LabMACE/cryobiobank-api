@@ -3,6 +3,8 @@ mod common;
 mod config;
 mod dna;
 #[cfg(test)]
+mod bulk_import_tests;
+#[cfg(test)]
 mod e2e_tests;
 mod field_records;
 mod isolates;
