@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use crudcrate::validation::{validators::validate_range, Validatable, ValidationError};
 use crudcrate::{CRUDResource, EntityToModels};
 use sea_orm::entity::prelude::*;
 use uuid::Uuid;
@@ -64,3 +65,35 @@ impl Related<crate::areas::db::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+// EPSG:4326 coordinate bounds. crudcrate auto-invokes `validate()` on create and
+// update (HTTP 422 on failure). Elevation is intentionally unbounded — below-sea-level
+// sites are valid.
+fn validate_coordinates(
+    latitude: f64,
+    longitude: f64,
+) -> Result<(), ValidationError> {
+    validate_range("latitude_4326", latitude, Some(-90.0), Some(90.0))?;
+    validate_range("longitude_4326", longitude, Some(-180.0), Some(180.0))?;
+    Ok(())
+}
+
+impl Validatable for SiteCreate {
+    fn validate(&self) -> Result<(), ValidationError> {
+        validate_coordinates(self.latitude_4326, self.longitude_4326)
+    }
+}
+
+impl Validatable for SiteUpdate {
+    fn validate(&self) -> Result<(), ValidationError> {
+        // The update model wraps each column as `Option<Option<T>>`: outer `None`
+        // = field absent from the request. Validate only supplied coordinates.
+        if let Some(Some(latitude)) = self.latitude_4326 {
+            validate_range("latitude_4326", latitude, Some(-90.0), Some(90.0))?;
+        }
+        if let Some(Some(longitude)) = self.longitude_4326 {
+            validate_range("longitude_4326", longitude, Some(-180.0), Some(180.0))?;
+        }
+        Ok(())
+    }
+}

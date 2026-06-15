@@ -34,6 +34,7 @@ async fn create_dna_valid() {
     let create_field_record_payload = json!({
         "site_id": site_id,
         "name": "DNA_FieldRecord",
+        "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
     let request = Request::builder()
@@ -91,6 +92,7 @@ async fn test_dna_duplicate_name() {
     let create_field_record_payload = json!({
         "site_id": site_id,
         "name": "DNA_Dup_FieldRecord",
+        "sample_type": "Snow",
         "sampling_date": "2023-02-18"
     });
     let request = Request::builder()

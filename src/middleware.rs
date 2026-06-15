@@ -22,13 +22,9 @@ pub fn is_admin(req: &Request) -> bool {
 /// Block writes for non-admin, return early if unauthorized/forbidden write attempt.
 fn check_write_access(req: &Request) -> Option<Response> {
     if *req.method() != Method::GET && *req.method() != Method::HEAD && !is_admin(req) {
-        match req.extensions().get::<AuthStatus>() {
-            Some(axum_keycloak_auth::KeycloakAuthStatus::Failure(_)) => {
-                Some(StatusCode::FORBIDDEN.into_response())
-            }
-            None => Some(StatusCode::UNAUTHORIZED.into_response()),
-            _ => Some(StatusCode::FORBIDDEN.into_response()),
-        }
+        // Writes are admin-only: any non-admin (failed token, or no auth status at
+        // all — e.g. the public/scoped surface with no Keycloak layer) is Forbidden.
+        Some(StatusCode::FORBIDDEN.into_response())
     } else {
         None
     }

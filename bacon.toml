@@ -45,6 +45,13 @@ need_stdout = false
 command = ["cargo", "test"]
 need_stdout = true
 
+# Full integration run for the e2e stack watcher: includes the #[ignore]d
+# Postgres/Keycloak tests alongside the default ones, single-threaded so the
+# shared test DB isn't hit concurrently.
+[jobs.test-integration]
+command = ["cargo", "test", "--", "--include-ignored", "--test-threads=1"]
+need_stdout = true
+
 [jobs.nextest]
 command = [
     "cargo", "nextest", "run",

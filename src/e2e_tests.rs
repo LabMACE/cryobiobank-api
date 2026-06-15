@@ -5,7 +5,7 @@ use axum::{
 use serde_json::json;
 use tower::ServiceExt;
 
-use crate::test_utils::{build_app_with_db, setup_sqlite_db};
+use crate::test_utils::{build_app_with_db, setup_clean_db, setup_sqlite_db};
 
 async fn post_json(
     app: &axum::Router,
@@ -273,5 +273,122 @@ async fn reject_missing_required_fields() {
     let app = build_app_with_db(db);
 
     let (status, _) = post_json(&app, "/api/sites", json!({ "name": "Missing coords" })).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+// --- Postgres-backed ingestion workflow (e2e stack) -------------------------
+// These run against the real PostGIS test DB (`#[ignore]`d so they don't run on
+// a plain `cargo test` without one). They cover what the in-memory SQLite
+// bulk_import_tests can't: the list endpoints whose handlers use PostGIS /
+// array-join SQL (areas convex hull, field_records & isolates joins), real
+// foreign-key enforcement, and the sample_type enum. Mirrors the wizard, which
+// resolves names to ids client-side and posts ID-based rows to /batch.
+
+async fn batch(app: &axum::Router, entity: &str, payload: serde_json::Value) -> (StatusCode, serde_json::Value) {
+    post_json(app, &format!("/api/{entity}/batch?partial=true"), payload).await
+}
+
+async fn list(app: &axum::Router, entity: &str) -> Vec<serde_json::Value> {
+    let uri = format!(
+        "/api/{entity}?sort=%5B%22name%22%2C%22ASC%22%5D&range=%5B0%2C99%5D&filter=%7B%7D"
+    );
+    let (status, body) = get_one(app, &uri).await;
+    assert_eq!(status, StatusCode::OK, "list {entity}: {body}");
+    body.as_array().expect("list response is an array").clone()
+}
+
+#[tokio::test]
+#[ignore]
+async fn pg_full_hierarchy_then_lists() {
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db);
+
+    let (s, areas) = batch(&app, "areas", json!([{ "name": "PG Alps", "colour": "#1565c0" }])).await;
+    assert_eq!(s, StatusCode::CREATED, "areas: {areas}");
+    let area_id = areas["succeeded"][0]["id"].as_str().unwrap();
+
+    let (s, sites) = batch(
+        &app,
+        "sites",
+        json!([{ "name": "PG Glacier", "latitude_4326": 46.5, "longitude_4326": 7.3, "elevation_metres": 3200.0, "area_id": area_id }]),
+    )
+    .await;
+    assert_eq!(s, StatusCode::CREATED, "sites: {sites}");
+    let site_id = sites["succeeded"][0]["id"].as_str().unwrap();
+
+    let (s, frs) = batch(
+        &app,
+        "field_records",
+        json!([{ "site_id": site_id, "name": "PG-FR-001", "sample_type": "Snow", "sampling_date": "2025-03-15" }]),
+    )
+    .await;
+    assert_eq!(s, StatusCode::CREATED, "field_records: {frs}");
+    let fr_id = frs["succeeded"][0]["id"].as_str().unwrap();
+
+    let (s, _) = batch(&app, "samples", json!([{ "field_record_id": fr_id, "name": "PG-S-1" }])).await;
+    assert_eq!(s, StatusCode::CREATED);
+    let (s, _) = batch(
+        &app,
+        "isolates",
+        json!([{ "field_record_id": fr_id, "name": "PG-ISO-1", "taxonomy": "Pseudomonas sp." }]),
+    )
+    .await;
+    assert_eq!(s, StatusCode::CREATED);
+    let (s, _) = batch(&app, "dna", json!([{ "field_record_id": fr_id, "name": "PG-DNA-1" }])).await;
+    assert_eq!(s, StatusCode::CREATED);
+
+    // The PostGIS / array-join list handlers (only runnable on Postgres).
+    assert_eq!(list(&app, "areas").await.len(), 1);
+    assert_eq!(list(&app, "sites").await.len(), 1);
+    assert_eq!(list(&app, "field_records").await.len(), 1);
+    assert_eq!(list(&app, "samples").await.len(), 1);
+    assert_eq!(list(&app, "isolates").await.len(), 1);
+    assert_eq!(list(&app, "dna").await.len(), 1);
+}
+
+#[tokio::test]
+#[ignore]
+async fn pg_partial_batch_reports_fk_violation() {
+    // A sample referencing a non-existent field record violates the FK. With
+    // partial mode and a single bad row, the whole request is a 400 but the body
+    // still carries the per-row failure (Postgres enforces the FK; SQLite doesn't).
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db);
+
+    let (status, body) = batch(
+        &app,
+        "samples",
+        json!([{ "field_record_id": "00000000-0000-0000-0000-0000000000ff", "name": "Orphan" }]),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "fk violation: {body}");
+    let failed = body["failed"].as_array().unwrap();
+    assert_eq!(failed.len(), 1);
+    assert!(!failed[0]["error"].as_str().unwrap().is_empty());
+}
+
+#[tokio::test]
+#[ignore]
+async fn pg_invalid_sample_type_enum_rejected() {
+    // sample_type is a Rust/Postgres enum (Snow|Soil); an unknown variant fails
+    // body deserialization for the whole batch → 422.
+    let db = setup_clean_db().await;
+    let app = build_app_with_db(db);
+
+    let (s, sites) = batch(
+        &app,
+        "sites",
+        json!([{ "name": "Enum Site", "latitude_4326": 46.0, "longitude_4326": 7.0, "elevation_metres": 1000.0 }]),
+    )
+    .await;
+    assert_eq!(s, StatusCode::CREATED);
+    let site_id = sites["succeeded"][0]["id"].as_str().unwrap();
+
+    let (status, _) = post_json(
+        &app,
+        "/api/field_records/batch?partial=true",
+        json!([{ "site_id": site_id, "name": "Bad Enum FR", "sample_type": "Ice", "sampling_date": "2025-03-15" }]),
+    )
+    .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 }

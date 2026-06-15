@@ -6,6 +6,8 @@ mod dna;
 mod bulk_import_tests;
 #[cfg(test)]
 mod e2e_tests;
+#[cfg(test)]
+mod smoke_tests;
 mod field_records;
 mod isolates;
 mod middleware;

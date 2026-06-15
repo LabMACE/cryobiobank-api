@@ -136,7 +136,7 @@ async fn create_site_invalid_latitude() {
         .body(Body::from(create_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]
@@ -158,7 +158,7 @@ async fn create_site_invalid_longitude() {
         .body(Body::from(create_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]
@@ -241,7 +241,7 @@ async fn test_sites_invalid_values() {
         .body(Body::from(invalid_lat_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     let invalid_long_payload = json!({
         "name": "Invalid_Long",
@@ -256,7 +256,7 @@ async fn test_sites_invalid_values() {
         .body(Body::from(invalid_long_payload.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     let valid_payload = json!({
         "name": "Unique_Site",
@@ -320,7 +320,7 @@ async fn test_sites_invalid_update() {
         .body(Body::from(update_payload_invalid.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     let update_payload_invalid = json!({
         "name": "Prabe_S3_Invalid",
@@ -335,5 +335,5 @@ async fn test_sites_invalid_update() {
         .body(Body::from(update_payload_invalid.to_string()))
         .unwrap();
     let response = app.clone().oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }

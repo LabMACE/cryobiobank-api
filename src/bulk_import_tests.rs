@@ -242,9 +242,9 @@ async fn batch_create_rejects_duplicate_name() {
     .await;
     assert_eq!(status, StatusCode::CREATED);
 
-    // Default (all-or-nothing) mode: a clashing name fails the whole batch.
-    // (crudcrate >= 0.9 maps this to a clean 409 Conflict; on the pinned 0.8 it
-    // is a 500 — either way it must not report success.)
+    // Default (all-or-nothing) mode: a clashing name fails the whole batch —
+    // crudcrate maps the unique-constraint violation to a 409 Conflict, so this
+    // must not report success.
     let (status, _) = post_json(
         &app,
         "/api/areas/batch",
@@ -285,9 +285,9 @@ async fn batch_create_partial_mode_reports_failed_rows() {
     assert_eq!(succeeded[0]["name"].as_str().unwrap(), "New Area");
     assert_eq!(failed.len(), 1);
     assert_eq!(failed[0]["index"].as_u64().unwrap(), 1);
-    // The failed row carries a per-row error string. The import wizard catches the
-    // common duplicate case earlier (preview-time "Already exists in the database"),
-    // and crudcrate >= 0.9 makes this API message a clean "... already exists" too.
+    // The failed row carries crudcrate's per-row "... already exists" message. The
+    // import wizard also catches duplicates earlier (preview-time "Already exists
+    // in the database").
     assert!(!failed[0]["error"].as_str().unwrap().is_empty());
 }
 

@@ -294,9 +294,10 @@ async fn test_isolate_images() {
         .iter()
         .find(|i| i.get("id").unwrap().as_str().unwrap() == isolate_id)
         .unwrap();
-    let photo = isolate.get("photo").unwrap();
+    // The list response omits `photo` entirely (exclude(list) + has_photo flag),
+    // so the key may be absent — treat absent and null the same.
     assert_eq!(
-        photo.as_str(),
+        isolate.get("photo").and_then(|v| v.as_str()),
         None,
         "Photo should not be returned in get all"
     );
