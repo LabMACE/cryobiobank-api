@@ -29,6 +29,10 @@ pub struct Model {
     pub is_private: bool,
     #[crudcrate(sortable, filterable)]
     pub field_record_id: Uuid,
+    #[crudcrate(sortable, filterable)]
+    pub volume: Option<f64>,
+    #[crudcrate(sortable, filterable)]
+    pub concentration: Option<f64>,
     #[crudcrate(sortable, filterable, exclude(create, update), on_create = chrono::Utc::now())]
     pub created_at: DateTime<Utc>,
 }

@@ -32,6 +32,10 @@ pub struct Model {
 
     #[crudcrate(sortable, filterable)]
     pub sampling_date: NaiveDate,
+    #[crudcrate(sortable, filterable, fulltext)]
+    pub treatment: Option<String>,
+    #[crudcrate(sortable, filterable, fulltext)]
+    pub campaign: Option<String>,
     #[crudcrate(sortable, filterable)]
     pub sample_depth_cm: Option<f64>,
     #[crudcrate(sortable, filterable)]
@@ -49,7 +53,15 @@ pub struct Model {
     #[crudcrate(sortable, filterable)]
     pub cfu_count_another: Option<i32>,
     #[crudcrate(sortable, filterable)]
+    pub water_content: Option<f64>,
+    #[crudcrate(sortable, filterable)]
     pub ph: Option<f64>,
+    #[crudcrate(sortable, filterable)]
+    pub total_carbon: Option<f64>,
+    #[crudcrate(sortable, filterable)]
+    pub total_organic_carbon: Option<f64>,
+    #[crudcrate(sortable, filterable)]
+    pub total_nitrogen: Option<f64>,
     #[crudcrate(sortable, filterable)]
     pub ions_fluoride: Option<f64>,
     #[crudcrate(sortable, filterable)]

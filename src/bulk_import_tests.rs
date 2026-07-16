@@ -340,3 +340,99 @@ async fn batch_create_rejects_over_limit() {
     let (status, _) = post_json(&app, "/api/areas/batch", json!(payload)).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
+
+// ----------------------------------------------------------------------------
+// New field record and DNA columns (July 2026).
+// ----------------------------------------------------------------------------
+
+/// Create one area + site + field record and return the field-record id, so the
+/// new-field tests below can hang a record off a valid site.
+async fn seed_site_field_record(app: &axum::Router, fr_payload: Value) -> String {
+    let areas = batch_create(
+        app,
+        "areas",
+        json!([{ "name": "Seed Area", "colour": "#123456" }]),
+    )
+    .await;
+    let area_id = areas[0]["id"].as_str().unwrap();
+    let sites = batch_create(
+        app,
+        "sites",
+        json!([{ "name": "Seed Site", "latitude_4326": 46.5, "longitude_4326": 7.3, "elevation_metres": 2000.0, "area_id": area_id }]),
+    )
+    .await;
+    let site_id = sites[0]["id"].as_str().unwrap();
+
+    let mut payload = fr_payload;
+    payload["site_id"] = json!(site_id);
+    let frs = batch_create(app, "field_records", json!([payload])).await;
+    frs[0]["id"].as_str().unwrap().to_string()
+}
+
+/// Scenario: reorganised field records gain Treatment, Campaign, Water content,
+/// and the elemental-content trio (TC / TOC / TN).
+/// Expected behaviour: each value is persisted and returned on read.
+#[tokio::test]
+async fn field_record_accepts_new_fields() {
+    let db = setup_sqlite_db().await;
+    let app = build_app_with_db(db);
+
+    let fr_id = seed_site_field_record(
+        &app,
+        json!({
+            "name": "FR-NEW-001",
+            "sample_type": "Soil",
+            "sampling_date": "2026-06-01",
+            "treatment": "control",
+            "campaign": "Summer 2026",
+            "water_content": 34.2,
+            "total_carbon": 5.1,
+            "total_organic_carbon": 4.7,
+            "total_nitrogen": 0.42
+        }),
+    )
+    .await;
+
+    let (status, fr) = get_one(&app, &format!("/api/field_records/{fr_id}")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(fr["treatment"], json!("control"));
+    assert_eq!(fr["campaign"], json!("Summer 2026"));
+    assert_eq!(fr["water_content"], json!(34.2));
+    assert_eq!(fr["total_carbon"], json!(5.1));
+    assert_eq!(fr["total_organic_carbon"], json!(4.7));
+    assert_eq!(fr["total_nitrogen"], json!(0.42));
+}
+
+/// Scenario: DNA records gain Volume and Concentration. The metagenome URL is
+/// not stored on DNA; it lives on the parent field record and DNA displays it
+/// (inherited), so it is intentionally absent from the DNA payload.
+/// Expected behaviour: volume and concentration are persisted and returned on read.
+#[tokio::test]
+async fn dna_accepts_volume_and_concentration() {
+    let db = setup_sqlite_db().await;
+    let app = build_app_with_db(db);
+
+    let fr_id = seed_site_field_record(
+        &app,
+        json!({ "name": "FR-DNA-001", "sample_type": "Soil", "sampling_date": "2026-06-01" }),
+    )
+    .await;
+
+    let dna = batch_create(
+        &app,
+        "dna",
+        json!([{
+            "name": "DNA-NEW-001",
+            "field_record_id": fr_id,
+            "volume": 25.0,
+            "concentration": 12.8
+        }]),
+    )
+    .await;
+    let dna_id = dna[0]["id"].as_str().unwrap();
+
+    let (status, d) = get_one(&app, &format!("/api/dna/{dna_id}")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(d["volume"], json!(25.0));
+    assert_eq!(d["concentration"], json!(12.8));
+}
