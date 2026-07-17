@@ -436,3 +436,32 @@ async fn dna_accepts_volume_and_concentration() {
     assert_eq!(d["volume"], json!(25.0));
     assert_eq!(d["concentration"], json!(12.8));
 }
+
+/// French (and other) diacritics in text fields must round-trip byte-for-byte
+/// through create -> store -> read. JSON, Rust `String` and the TEXT columns are
+/// all UTF-8, so no special handling is needed server-side; this pins that.
+#[tokio::test]
+async fn text_fields_preserve_diacritics() {
+    let db = setup_sqlite_db().await;
+    let app = build_app_with_db(db);
+
+    let campaign = "Forêt d'Aletsch, évapotranspiration à Genève (çàéèêëîïôûù)";
+
+    let fr_id = seed_site_field_record(
+        &app,
+        json!({
+            "name": "Relevé Zürich-Genève",
+            "sample_type": "Soil",
+            "sampling_date": "2026-06-01",
+            "treatment": "témoin (contrôle)",
+            "campaign": campaign
+        }),
+    )
+    .await;
+
+    let (status, fr) = get_one(&app, &format!("/api/field_records/{fr_id}")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(fr["name"], json!("Relevé Zürich-Genève"));
+    assert_eq!(fr["treatment"], json!("témoin (contrôle)"));
+    assert_eq!(fr["campaign"], json!(campaign));
+}
