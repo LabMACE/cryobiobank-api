@@ -45,9 +45,11 @@ pub struct Model {
     #[crudcrate(sortable, filterable)]
     pub snow_temperature_celsius: Option<f64>,
     #[crudcrate(sortable, filterable)]
+    pub soil_temperature_celsius: Option<f64>,
+    #[crudcrate(sortable, filterable)]
     pub photosynthetic_active_radiation: Option<i32>,
     #[crudcrate(sortable, filterable)]
-    pub bacterial_abundance: Option<i64>,
+    pub flow_cytometry_cell_number: Option<i64>,
     #[crudcrate(sortable, filterable)]
     pub cfu_count_r2a: Option<i32>,
     #[crudcrate(sortable, filterable)]

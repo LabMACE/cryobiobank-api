@@ -107,7 +107,8 @@ async fn bulk_import_full_hierarchy() {
             {
                 "site_id": site_glacier, "name": "FR-GP-001", "sample_type": "Snow",
                 "sampling_date": "2025-03-15", "snow_depth_cm": 120.5,
-                "air_temperature_celsius": -8.0, "ph": 6.2, "ions_chloride": 0.15, "ions_nitrate": 0.08
+                "air_temperature_celsius": -8.0, "soil_temperature_celsius": -3.5,
+                "ph": 6.2, "ions_chloride": 0.15, "ions_nitrate": 0.08
             },
             {
                 "site_id": site_glacier, "name": "FR-GP-002", "sample_type": "Soil",
@@ -118,7 +119,7 @@ async fn bulk_import_full_hierarchy() {
             { "site_id": site_snow, "name": "FR-SB-001", "sample_type": "Snow", "sampling_date": "2025-02-10" },
             {
                 "site_id": site_eastern, "name": "FR-ER-001", "sample_type": "Soil",
-                "sampling_date": "2025-08-01", "bacterial_abundance": 1500000, "cfu_count_r2a": 250
+                "sampling_date": "2025-08-01", "flow_cytometry_cell_number": 1500000, "cfu_count_r2a": 250
             }
         ]),
     )
@@ -133,7 +134,8 @@ async fn bulk_import_full_hierarchy() {
     assert_eq!(frs[0]["snow_depth_cm"].as_f64().unwrap(), 120.5);
     assert_eq!(frs[0]["ions_chloride"].as_f64().unwrap(), 0.15);
     assert_eq!(frs[1]["organic_acids_acetate"].as_f64().unwrap(), 0.05);
-    assert_eq!(frs[3]["bacterial_abundance"].as_i64().unwrap(), 1500000);
+    assert_eq!(frs[0]["soil_temperature_celsius"].as_f64().unwrap(), -3.5);
+    assert_eq!(frs[3]["flow_cytometry_cell_number"].as_i64().unwrap(), 1500000);
 
     // Samples
     let samples = batch_create(
@@ -203,9 +205,10 @@ async fn bulk_import_full_hierarchy() {
     assert_eq!(fr["site_id"].as_str().unwrap(), site_glacier);
     assert_eq!(fr["sample_type"].as_str().unwrap(), "Snow");
     assert_eq!(fr["snow_depth_cm"].as_f64().unwrap(), 120.5);
+    assert_eq!(fr["soil_temperature_celsius"].as_f64().unwrap(), -3.5);
     let (status, fr) = get_one(&app, &format!("/api/field_records/{fr_er1}")).await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(fr["bacterial_abundance"].as_i64().unwrap(), 1500000);
+    assert_eq!(fr["flow_cytometry_cell_number"].as_i64().unwrap(), 1500000);
 
     // Samples — FK + default is_available
     let sample_id = samples[0]["id"].as_str().unwrap();

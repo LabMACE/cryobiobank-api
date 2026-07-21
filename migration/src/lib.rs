@@ -13,6 +13,7 @@ mod m20260417_000000_restructure_entities;
 mod m20260422_000000_add_created_at;
 mod m20260428_000000_rename_site_replicates_to_field_records;
 mod m20260716_000000_add_field_record_and_dna_fields;
+mod m20260721_000000_rename_flow_cytometry_add_soil_temperature;
 
 pub struct Migrator;
 
@@ -33,6 +34,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260422_000000_add_created_at::Migration),
             Box::new(m20260428_000000_rename_site_replicates_to_field_records::Migration),
             Box::new(m20260716_000000_add_field_record_and_dna_fields::Migration),
+            Box::new(m20260721_000000_rename_flow_cytometry_add_soil_temperature::Migration),
         ]
     }
 }
