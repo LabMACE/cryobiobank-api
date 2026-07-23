@@ -1,13 +1,15 @@
 use axum::{
-    extract::Request,
+    extract::{Query, Request},
     http::{Method, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
 };
 use crudcrate::ScopeCondition;
 use sea_orm::{sea_query::Expr, ColumnTrait, Condition};
+use std::collections::HashMap;
 
 use crate::common::auth::Role;
+use crate::common::enums::SampleType;
 
 type AuthStatus =
     axum_keycloak_auth::KeycloakAuthStatus<Role, axum_keycloak_auth::decode::ProfileAndEmail>;
@@ -130,16 +132,64 @@ pub async fn scope_samples(mut req: Request, next: Next) -> Response {
     next.run(req).await
 }
 
-/// Isolates: `is_private = false AND field_record/site/area chain is public`
+/// Isolates: `is_private = false AND field_record/site/area chain is public`, plus an
+/// optional `?sample_type=` habitat filter.
 pub async fn scope_isolates(mut req: Request, next: Next) -> Response {
     if let Some(r) = check_write_access(&req) {
         return r;
     }
+
+    let sample_type = match sample_type_param(&req) {
+        Ok(t) => t,
+        Err(rejection) => return rejection.into_response(),
+    };
+
+    let mut condition = Condition::all();
+    let mut apply = false;
+
     if !is_admin(&req) {
-        req.extensions_mut()
-            .insert(ScopeCondition::new(isolates_scope()));
+        condition = condition.add(isolates_scope());
+        apply = true;
+    }
+    if let Some(sample_type) = sample_type {
+        condition = condition.add(field_record_sample_type_scope(&sample_type));
+        apply = true;
+    }
+
+    if apply {
+        req.extensions_mut().insert(ScopeCondition::new(condition));
     }
     next.run(req).await
+}
+
+/// Habitat lives on the parent field record, not the isolate. Expressing it as a
+/// subquery keeps the client from having to enumerate matching field record ids in the
+/// URL, which overflowed the request header limit once the database filled up.
+fn field_record_sample_type_scope(sample_type: &SampleType) -> Condition {
+    Condition::all().add(Expr::cust_with_values(
+        "field_record_id IN (SELECT id FROM field_records WHERE sample_type = $1)",
+        [sample_type.to_string()],
+    ))
+}
+
+/// Read and validate `?sample_type=`. An unparseable value is a client error rather
+/// than a silently unfiltered list.
+fn sample_type_param(req: &Request) -> Result<Option<SampleType>, (StatusCode, String)> {
+    let Ok(Query(params)) = Query::<HashMap<String, String>>::try_from_uri(req.uri()) else {
+        return Ok(None);
+    };
+    let Some(raw) = params.get("sample_type") else {
+        return Ok(None);
+    };
+
+    match raw.as_str() {
+        "Snow" => Ok(Some(SampleType::Snow)),
+        "Soil" => Ok(Some(SampleType::Soil)),
+        other => Err((
+            StatusCode::BAD_REQUEST,
+            format!("unknown sample_type '{other}', expected Snow or Soil"),
+        )),
+    }
 }
 
 /// DNA: `is_private = false AND field_record/site/area chain is public`
@@ -163,7 +213,10 @@ mod tests {
     use serde_json::{json, Value};
     use tower::ServiceExt;
 
-    use crate::test_utils::{build_app_with_db, build_scoped_app_with_db, setup_clean_db};
+    use crate::test_utils::{
+        build_app_with_db, build_app_with_keycloak, build_scoped_app_with_db, get_keycloak_jwt,
+        keycloak_reachable, setup_clean_db,
+    };
 
     async fn admin_create(app: &axum::Router, path: &str, payload: Value) -> (StatusCode, Value) {
         let request = Request::builder()
@@ -608,6 +661,134 @@ mod tests {
             sites.len()
         );
         assert_eq!(sites[0]["name"], "PubSiteUnderArea");
+    }
+
+    /// Habitat is a property of the parent field record, so the isolates endpoint has
+    /// to resolve it server-side rather than the client naming every matching parent.
+    async fn seed_isolates_across_habitats(app: &axum::Router) {
+        let (s, site) = admin_create(
+            app,
+            "/api/sites",
+            json!({
+                "name": "HabitatSite",
+                "latitude_4326": 46.0, "longitude_4326": 7.0, "elevation_metres": 1000.0,
+                "is_private": false
+            }),
+        )
+        .await;
+        assert_eq!(s, StatusCode::CREATED);
+        let site_id = site["id"].as_str().unwrap();
+
+        for (sample_type, isolate_names) in [("Snow", ["snow-iso-a", "snow-iso-b"]), ("Soil", ["soil-iso-a", "soil-iso-b"])] {
+            let (s, field_record) = admin_create(
+                app,
+                "/api/field_records",
+                json!({
+                    "name": format!("fr-{sample_type}"), "site_id": site_id,
+                    "sample_type": sample_type,
+                    "sampling_date": "2024-06-01",
+                    "is_private": false
+                }),
+            )
+            .await;
+            assert_eq!(s, StatusCode::CREATED);
+            let field_record_id = field_record["id"].as_str().unwrap();
+
+            for name in isolate_names {
+                let (s, _) = admin_create(
+                    app,
+                    "/api/isolates",
+                    json!({ "name": name, "field_record_id": field_record_id, "is_private": false }),
+                )
+                .await;
+                assert_eq!(s, StatusCode::CREATED);
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn isolates_sample_type_filters_by_parent_habitat() {
+        let db = setup_clean_db().await;
+        let admin = build_app_with_db(db.clone());
+        let scoped = build_scoped_app_with_db(db.clone());
+
+        seed_isolates_across_habitats(&admin).await;
+
+        let (status, body) = scoped_get(&scoped, "/api/isolates").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body.as_array().unwrap().len(), 4, "all isolates without a filter");
+
+        for (sample_type, prefix) in [("Snow", "snow-"), ("Soil", "soil-")] {
+            let (status, body) =
+                scoped_get(&scoped, &format!("/api/isolates?sample_type={sample_type}")).await;
+            assert_eq!(status, StatusCode::OK);
+            let isolates = body.as_array().expect("response should be an array");
+            assert_eq!(
+                isolates.len(),
+                2,
+                "{sample_type}: expected only isolates under a {sample_type} field record, got {isolates:?}"
+            );
+            for isolate in isolates {
+                let name = isolate["name"].as_str().unwrap();
+                assert!(
+                    name.starts_with(prefix),
+                    "{sample_type}: isolate from the other habitat leaked (name={name})"
+                );
+            }
+        }
+    }
+
+    /// The filter is independent of the privacy scoping, so it has to hold for an
+    /// authenticated admin too — a path only reachable with the Keycloak layer
+    /// attached, since `build_app_with_db` strips middleware.
+    #[tokio::test]
+    #[ignore]
+    async fn isolates_sample_type_filter_applies_for_admin() {
+        if !keycloak_reachable().await {
+            eprintln!("skipping isolates_sample_type_filter_applies_for_admin: Keycloak unreachable");
+            return;
+        }
+        let db = setup_clean_db().await;
+        seed_isolates_across_habitats(&build_app_with_db(db.clone())).await;
+
+        let app = build_app_with_keycloak(db).await;
+        let token = get_keycloak_jwt("admin", "admin").await;
+
+        let request = Request::builder()
+            .method("GET")
+            .uri("/api/isolates?sample_type=Snow")
+            .header("Authorization", format!("Bearer {token}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+        let isolates: Value = serde_json::from_slice(&body).unwrap();
+        let isolates = isolates.as_array().expect("response should be an array");
+        assert_eq!(
+            isolates.len(),
+            2,
+            "admin should get the same habitat filtering, got {isolates:?}"
+        );
+        assert!(isolates
+            .iter()
+            .all(|i| i["name"].as_str().unwrap().starts_with("snow-")));
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn isolates_unknown_sample_type_is_rejected() {
+        let db = setup_clean_db().await;
+        let scoped = build_scoped_app_with_db(db.clone());
+
+        let (status, _) = scoped_get(&scoped, "/api/isolates?sample_type=Lava").await;
+        assert_eq!(
+            status,
+            StatusCode::BAD_REQUEST,
+            "an unknown habitat should be an error, not a silently unfiltered list"
+        );
     }
 
     #[tokio::test]
